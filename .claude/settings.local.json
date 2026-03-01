@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --no-eslint --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --src-dir --no-eslint --import-alias \"@/*\" --yes --name resumatchai)",
+      "Bash(npx create-next-app@latest temp-resumatchai --typescript --tailwind --app --src-dir --no-eslint --import-alias \"@/*\" --yes)",
+      "Bash(npm install @clerk/nextjs lucide-react svix)",
+      "Bash(npx shadcn@latest init --defaults --base-color slate --css-variables --yes)",
+      "Bash(npx shadcn@latest add button badge card separator sheet avatar dropdown-menu --yes)",
+      "Bash(npm run build)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(node -e \":*)",
+      "Bash(timeout 20 npm run dev)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(echo \"Reverted proxy.ts -> middleware.ts\")",
+      "Bash(curl -v http://localhost:3000)",
+      "Bash(npm install next-themes)",
+      "Bash(npx shadcn@latest add progress table tabs textarea input dialog sonner tooltip skeleton --yes)"
+    ]
+  }
+}
