@@ -10,9 +10,31 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "ResuMatchAI — Match Your Resume to Any Job",
+  title: {
+    default: "ResuMatchAI — Match Your Resume to Any Job",
+    template: "%s | ResuMatchAI",
+  },
   description:
-    "AI-powered resume analysis and job matching. Get tailored recommendations to land your next role.",
+    "AI-powered resume analysis and job matching. Upload your resume, paste a job description, and get an instant match score with personalised recommendations.",
+  metadataBase: new URL("https://resumatch.zeeshanai.cloud"),
+  openGraph: {
+    type: "website",
+    url: "https://resumatch.zeeshanai.cloud",
+    title: "ResuMatchAI — Match Your Resume to Any Job",
+    description:
+      "AI-powered resume analysis and job matching. Get an instant match score and tailored recommendations to land your next role.",
+    siteName: "ResuMatchAI",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ResuMatchAI — Match Your Resume to Any Job",
+    description:
+      "AI-powered resume analysis and job matching. Get an instant match score and tailored recommendations.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
