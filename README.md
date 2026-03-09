@@ -2,7 +2,7 @@
 
 An AI-powered SaaS application that matches resumes against job descriptions, providing intelligent scoring, gap analysis, and personalized recommendations using Claude AI via n8n workflows.
 
-**Live Demo:** [ResuMatchAI](https://resumematchai.app) (coming soon)
+**Live Demo:** [resumatch.zeeshanai.cloud](https://resumatch.zeeshanai.cloud)
 
 ## Features
 

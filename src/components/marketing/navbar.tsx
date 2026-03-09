@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { FileText } from "lucide-react";
 
 export function Navbar() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const anchor = (id: string) => (isHome ? `#${id}` : `/#${id}`);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/90 backdrop-blur-md">
       <div className="container mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
@@ -22,9 +27,9 @@ export function Navbar() {
         <nav className="hidden gap-7 text-sm md:flex">
           {(
             [
-              ["Features", "#features"],
-              ["How it works", "#how-it-works"],
-              ["Pricing", "#pricing"],
+              ["Features", anchor("features")],
+              ["How it works", anchor("how-it-works")],
+              ["Pricing", anchor("pricing")],
             ] as const
           ).map(([label, href]) => (
             <Link

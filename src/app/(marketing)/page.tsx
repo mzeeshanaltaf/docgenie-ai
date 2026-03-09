@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
+import { ContactDialog } from "@/components/marketing/contact-dialog";
 import {
   ArrowRight,
   Check,
@@ -424,8 +425,8 @@ export default function LandingPage() {
                     <>
                       <div className="absolute inset-0 rounded-xl bg-emerald-500/4" />
                       <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                        <span className="rounded-full bg-emerald-500 px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wider text-white">
-                          Most popular
+                        <span className="rounded-full bg-amber-500 px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wider text-white">
+                          Coming Soon
                         </span>
                       </div>
                     </>
@@ -455,33 +456,31 @@ export default function LandingPage() {
                     </ul>
 
                     <div className="mt-8">
-                      <SignedOut>
-                        <SignInButton mode="modal">
-                          <Button
-                            className={`w-full ${
-                              plan.highlight
-                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                : ""
-                            }`}
-                            variant={plan.highlight ? "default" : "outline"}
-                          >
-                            {plan.cta}
-                          </Button>
-                        </SignInButton>
-                      </SignedOut>
-                      <SignedIn>
-                        <Button
-                          asChild
-                          className={`w-full ${
-                            plan.highlight
-                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                              : ""
-                          }`}
-                          variant={plan.highlight ? "default" : "outline"}
-                        >
-                          <Link href="/dashboard">{plan.cta}</Link>
+                      {plan.name === "Enterprise" ? (
+                        <ContactDialog
+                          triggerLabel="Contact sales"
+                          triggerClassName="inline-flex h-9 w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        />
+                      ) : plan.name === "Pro" ? (
+                        <Button className="w-full" variant="outline" disabled>
+                          Coming Soon
                         </Button>
-                      </SignedIn>
+                      ) : (
+                        <>
+                          <SignedOut>
+                            <SignInButton mode="modal">
+                              <Button className="w-full" variant="outline">
+                                {plan.cta}
+                              </Button>
+                            </SignInButton>
+                          </SignedOut>
+                          <SignedIn>
+                            <Button asChild className="w-full" variant="outline">
+                              <Link href="/dashboard">{plan.cta}</Link>
+                            </Button>
+                          </SignedIn>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

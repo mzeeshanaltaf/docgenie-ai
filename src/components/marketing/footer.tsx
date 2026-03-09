@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
+import { ContactDialog } from "./contact-dialog";
 
 const links = {
   Product: [
@@ -8,13 +9,12 @@ const links = {
     ["How it works", "#how-it-works"],
   ],
   Company: [
-    ["About", "#"],
+    ["About", "/about"],
     ["Blog", "#"],
-    ["Contact", "#"],
   ],
   Legal: [
-    ["Privacy", "#"],
-    ["Terms", "#"],
+    ["Privacy", "/privacy"],
+    ["Terms", "/terms"],
   ],
 } as const;
 
@@ -57,6 +57,11 @@ export function Footer() {
                       </Link>
                     </li>
                   ))}
+                  {section === "Company" && (
+                    <li>
+                      <ContactDialog />
+                    </li>
+                  )}
                 </ul>
               </div>
             )
