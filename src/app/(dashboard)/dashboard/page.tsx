@@ -26,7 +26,7 @@ function formatDate(iso: string) {
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const { analytics, chatSessions, loading } = useDashboardData();
+  const { analytics, chatSessions, loading, creditBalance, messageBalance } = useDashboardData();
 
   if (loading) {
     return (
@@ -63,8 +63,9 @@ export default function DashboardPage() {
   }
 
   const totalDocuments = analytics?.total_documents_processed ?? 0;
-  const creditBalance = analytics?.credit_balance ?? 0;
-  const messageBalance = analytics?.message_balance ?? 0;
+  // Use live context values (updated after each chat message) with analytics as fallback
+  const credits = creditBalance ?? analytics?.credit_balance ?? 0;
+  const messages = messageBalance ?? analytics?.message_balance ?? 0;
 
   const recentSessions: ChatSession[] = chatSessions
     ? [...chatSessions].slice(0, 5)
@@ -78,12 +79,12 @@ export default function DashboardPage() {
     },
     {
       label: "Credits Remaining",
-      value: String(creditBalance),
+      value: String(credits),
       icon: Zap,
     },
     {
       label: "Messages Remaining",
-      value: String(messageBalance),
+      value: String(messages),
       icon: MessageSquare,
     },
   ];

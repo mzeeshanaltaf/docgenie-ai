@@ -1,5 +1,7 @@
 # DocGenie
 
+**Live App:** [https://docgenie.zeeshanai.cloud](https://docgenie.zeeshanai.cloud)
+
 An AI-powered SaaS application that lets users upload documents and chat with them using natural language. Upload PDFs, DOCX, TXT, or CSV files and get instant AI-powered answers — no more searching through pages of content.
 
 ## Features
@@ -126,8 +128,8 @@ Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the
 
 1. **Clone the repository**
    ```bash
-   git clone <repo-url>
-   cd docgenie
+   git clone https://github.com/mzeeshanaltaf/docgenie-ai.git
+   cd docgenie-ai
    ```
 
 2. **Install dependencies**
