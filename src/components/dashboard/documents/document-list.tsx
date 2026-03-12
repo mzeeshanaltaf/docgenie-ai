@@ -36,8 +36,7 @@ function formatFileSize(bytes: string | number) {
 }
 
 export function DocumentList() {
-  const { documents, refreshDocuments, refreshCredits, refreshAll } =
-    useDashboardData();
+  const { documents, refreshAll } = useDashboardData();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{
     id: string;
@@ -63,7 +62,7 @@ export function DocumentList() {
       }
 
       toast.success("Document deleted");
-      await Promise.all([refreshDocuments(), refreshCredits(), refreshAll()]);
+      await refreshAll();
     } catch {
       toast.error("Failed to delete document");
     } finally {

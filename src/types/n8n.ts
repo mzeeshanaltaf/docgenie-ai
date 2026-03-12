@@ -44,13 +44,32 @@ export type CreditTransaction = {
   unit_type: string;
   transaction_type: string;
   amount_delta: number;
-  reference_file_id: string | null;
+  reference_id: string | null;
   file_name_snapshot: string | null;
   description: string;
   created_at: string;
 };
 
 export type CreditHistoryResponse = CreditTransaction[];
+
+// ─── Unified Dashboard Data ─────────────────────────────────────────────────
+
+export type AccountSummary = {
+  credit_balance: number;
+  message_balance: number;
+  user_documents: number;
+};
+
+export type UserDashboardData = {
+  documents: DocumentRecord[];
+  chat_sessions: ChatSession[];
+  account_summary: AccountSummary;
+  credit_transactions: CreditTransaction[];
+};
+
+export type UserDashboardResponse = {
+  user_dashboard: UserDashboardData;
+};
 
 // ─── Ingestion ──────────────────────────────────────────────────────────────
 

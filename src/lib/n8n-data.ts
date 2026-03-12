@@ -1,7 +1,46 @@
 import { callN8nWebhook } from "./n8n";
-import type { DocumentRecord, ChatSession } from "@/types/n8n";
+import type {
+  DocumentRecord,
+  ChatSession,
+  UserDashboardData,
+  UserDashboardResponse,
+} from "@/types/n8n";
 
 const WEBHOOK_ID = process.env.N8N_DATA_WEBHOOK_ID!;
+
+/**
+ * Fetch all dashboard data in a single webhook call:
+ * documents, chat sessions, account summary, and credit transactions.
+ */
+export async function getUserDashboardData(
+  userId: string
+): Promise<UserDashboardData> {
+  const raw = await callN8nWebhook<
+    UserDashboardResponse[] | UserDashboardResponse
+  >(WEBHOOK_ID, {
+    event_type: "get_user_data",
+    user_id: userId,
+  });
+
+  // Response is wrapped in an array
+  const item = Array.isArray(raw) ? raw[0] : raw;
+  const dashboard = item?.user_dashboard;
+
+  return {
+    documents: Array.isArray(dashboard?.documents) ? dashboard.documents : [],
+    chat_sessions: Array.isArray(dashboard?.chat_sessions)
+      ? dashboard.chat_sessions
+      : [],
+    account_summary: {
+      credit_balance: Number(dashboard?.account_summary?.credit_balance ?? 0),
+      message_balance: Number(dashboard?.account_summary?.message_balance ?? 0),
+      user_documents: Number(dashboard?.account_summary?.user_documents ?? 0),
+    },
+    credit_transactions: Array.isArray(dashboard?.credit_transactions)
+      ? dashboard.credit_transactions
+      : [],
+  };
+}
 
 export async function getUserDocuments(
   userId: string

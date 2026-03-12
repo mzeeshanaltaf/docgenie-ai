@@ -27,7 +27,7 @@ export function DocumentUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { refreshDocuments, refreshCredits, refreshAll } = useDashboardData();
+  const { refreshAll } = useDashboardData();
 
   const validateFile = useCallback((file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -88,7 +88,7 @@ export function DocumentUpload() {
 
       toast.success("Document uploaded successfully");
       setSelectedFile(null);
-      await Promise.all([refreshDocuments(), refreshCredits(), refreshAll()]);
+      await refreshAll();
     } catch {
       toast.error("Failed to upload document");
     } finally {

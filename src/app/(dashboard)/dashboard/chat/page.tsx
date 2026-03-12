@@ -15,8 +15,7 @@ interface LocalMessage {
 }
 
 export default function ChatPage() {
-  const { chatSessions, loading, refreshCredits, refreshChatSessions } =
-    useDashboardData();
+  const { chatSessions, loading, refreshAll } = useDashboardData();
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,14 +131,14 @@ export default function ChatPage() {
                 [sessionId]: title,
               }));
             }
-            refreshChatSessions();
+            refreshAll();
           })
           .catch(() => {
             // Title generation is non-critical
           });
       }
 
-      refreshCredits();
+      refreshAll();
     } catch {
       toast.error("Failed to send message");
       setLocalMessages((prev) => prev.slice(0, -1));
