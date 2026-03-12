@@ -1,0 +1,208 @@
+"use client";
+
+import { useState, useCallback, useEffect } from "react";
+import { useDashboardData } from "@/contexts/dashboard-data";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChatSidebar } from "@/components/dashboard/chat/chat-sidebar";
+import { ChatMessages } from "@/components/dashboard/chat/chat-messages";
+import { ChatInput } from "@/components/dashboard/chat/chat-input";
+import { toast } from "sonner";
+import type { ChatSession } from "@/types/n8n";
+
+interface LocalMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export default function ChatPage() {
+  const { chatSessions, loading, refreshCredits, refreshChatSessions } =
+    useDashboardData();
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionTitles, setSessionTitles] = useState<Record<string, string>>(
+    {}
+  );
+
+  // Load messages when switching sessions
+  useEffect(() => {
+    if (!activeSessionId || !chatSessions) {
+      setLocalMessages([]);
+      return;
+    }
+
+    const session = chatSessions.find(
+      (s) => s.session_id === activeSessionId
+    );
+    if (session?.messages) {
+      const msgs: LocalMessage[] = [];
+      for (const m of session.messages) {
+        msgs.push({ role: "user", content: m.user_message });
+        msgs.push({ role: "assistant", content: m.ai_response });
+      }
+      setLocalMessages(msgs);
+    } else {
+      setLocalMessages([]);
+    }
+  }, [activeSessionId, chatSessions]);
+
+  const handleNewChat = useCallback(() => {
+    const newId = crypto.randomUUID();
+    setActiveSessionId(newId);
+    setLocalMessages([]);
+  }, []);
+
+  const handleSelectSession = useCallback((sessionId: string) => {
+    setActiveSessionId(sessionId);
+  }, []);
+
+  const handleSend = useCallback(
+    async (message: string) => {
+      if (!activeSessionId) {
+        // Auto-create a new session if none active
+        const newId = crypto.randomUUID();
+        setActiveSessionId(newId);
+        // Continue with this new ID
+        sendMessage(message, newId, true);
+        return;
+      }
+
+      const isFirstMessage = localMessages.length === 0;
+      sendMessage(message, activeSessionId, isFirstMessage);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeSessionId, localMessages]
+  );
+
+  const sendMessage = async (
+    message: string,
+    sessionId: string,
+    isFirstMessage: boolean
+  ) => {
+    // Optimistic update
+    setLocalMessages((prev) => [
+      ...prev,
+      { role: "user", content: message },
+    ]);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: message, session_id: sessionId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorMessage =
+          data.message || data.error || "Failed to get response";
+        toast.error(errorMessage);
+        // Remove the optimistic user message
+        setLocalMessages((prev) => prev.slice(0, -1));
+        return;
+      }
+
+      // Response is an array: [{ output: "..." }]
+      const aiResponse = Array.isArray(data)
+        ? data[0]?.output ?? "No response"
+        : data.output ?? "No response";
+
+      setLocalMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: aiResponse },
+      ]);
+
+      // Fire-and-forget: generate title for first message
+      if (isFirstMessage) {
+        fetch("/api/chat/title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: message, session_id: sessionId }),
+        })
+          .then((r) => r.json())
+          .then((titleData) => {
+            const title = Array.isArray(titleData)
+              ? titleData[0]?.output?.title
+              : titleData?.output?.title;
+            if (title) {
+              setSessionTitles((prev) => ({
+                ...prev,
+                [sessionId]: title,
+              }));
+            }
+            refreshChatSessions();
+          })
+          .catch(() => {
+            // Title generation is non-critical
+          });
+      }
+
+      refreshCredits();
+    } catch {
+      toast.error("Failed to send message");
+      setLocalMessages((prev) => prev.slice(0, -1));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] gap-0 rounded-lg border border-border overflow-hidden">
+        <div className="w-64 shrink-0 border-r border-border p-3 space-y-2">
+          <Skeleton className="h-9 w-full" />
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-8 w-full" />
+          ))}
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <Skeleton className="mt-4 h-5 w-40" />
+        </div>
+      </div>
+    );
+  }
+
+  // Merge server sessions with local title overrides
+  const displaySessions: ChatSession[] = [
+    // If current session is new (not in server data), add it at top
+    ...(activeSessionId &&
+    !chatSessions?.find((s) => s.session_id === activeSessionId) &&
+    localMessages.length > 0
+      ? [
+          {
+            session_id: activeSessionId,
+            chat_title:
+              sessionTitles[activeSessionId] || "New Chat",
+            messages: [],
+          },
+        ]
+      : []),
+    ...(chatSessions ?? []).map((s) => ({
+      ...s,
+      chat_title: sessionTitles[s.session_id] || s.chat_title,
+    })),
+  ];
+
+  return (
+    <div className="flex h-[calc(100vh-8rem)] rounded-lg border border-border overflow-hidden">
+      {/* Sidebar */}
+      <div className="hidden w-64 shrink-0 md:block">
+        <ChatSidebar
+          sessions={displaySessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+          onNewChat={handleNewChat}
+        />
+      </div>
+
+      {/* Chat area */}
+      <div className="flex flex-1 flex-col">
+        <ChatMessages messages={localMessages} isLoading={isLoading} />
+        <ChatInput onSend={handleSend} disabled={isLoading} />
+      </div>
+    </div>
+  );
+}

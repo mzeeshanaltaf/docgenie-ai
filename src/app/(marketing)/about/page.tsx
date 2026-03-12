@@ -1,38 +1,38 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
-import { FileText, Target, Zap, Shield } from "lucide-react";
+import { FileText, MessageSquare, Zap, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Learn about ResuMatchAI — our mission to help job seekers land more interviews with AI-powered resume matching.",
+    "Learn about DocGenie — our mission to help people extract knowledge from documents using AI.",
 };
 
 const values = [
   {
-    icon: Target,
-    title: "Precision over guesswork",
+    icon: MessageSquare,
+    title: "Answers over searching",
     description:
-      "We believe job seekers deserve to know exactly how their resume stacks up before they apply. No more hoping for the best.",
+      "We believe you shouldn't have to read 50 pages to find one number. Ask a question, get an answer — instantly.",
   },
   {
     icon: Zap,
     title: "Speed that respects your time",
     description:
-      "A full match report in under 60 seconds. Because your job search moves fast and your tools should too.",
+      "Documents are processed in seconds, and AI responses arrive in under 5 seconds. Because your time matters.",
   },
   {
     icon: Shield,
     title: "Privacy by design",
     description:
-      "Your resume is analysed and discarded. We never store, sell, or share your personal data with third parties.",
+      "Your documents are processed securely. We never sell or share your data with third parties.",
   },
   {
     icon: FileText,
-    title: "Actionable, not generic",
+    title: "Accurate, not generic",
     description:
-      "Every recommendation is tailored to the specific job description you submit — not recycled advice from a template.",
+      "Every answer is sourced directly from your document content — not hallucinated or pulled from generic knowledge.",
   },
 ];
 
@@ -52,14 +52,13 @@ export default function AboutPage() {
               className="mt-4 max-w-3xl text-4xl tracking-tight md:text-5xl lg:text-6xl"
               style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
             >
-              Built for job seekers who want an{" "}
-              <span className="text-emerald-600 dark:text-emerald-400">unfair advantage</span>.
+              Built to make documents{" "}
+              <span className="text-emerald-600 dark:text-emerald-400">talk back</span>.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-              ResuMatchAI was born out of frustration. Hundreds of applications, a handful of
-              callbacks, and no clear reason why. We built the tool we wished we had — one that
-              tells you exactly what recruiters and ATS systems are looking for, before you click
-              send.
+              DocGenie was born from a simple frustration: important answers are buried in
+              documents nobody has time to read. We built the tool we wished we had — one that
+              reads your documents and answers your questions instantly using AI.
             </p>
           </div>
         </section>
@@ -76,27 +75,26 @@ export default function AboutPage() {
                   className="mt-4 text-3xl tracking-tight md:text-4xl"
                   style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
                 >
-                  Close the gap between talent and opportunity
+                  Make knowledge accessible from any document
                 </h2>
                 <p className="mt-4 leading-relaxed text-muted-foreground">
-                  Every day, qualified candidates miss out on roles they&apos;re perfect for — not
-                  because they lack skill, but because their resume doesn&apos;t speak the
-                  language of the job description. ResuMatchAI bridges that gap.
+                  Every day, people waste hours searching through PDFs, reports, and spreadsheets
+                  for answers that should take seconds to find. DocGenie bridges that gap.
                 </p>
                 <p className="mt-4 leading-relaxed text-muted-foreground">
-                  Our AI analyses the specific requirements of each job you target, scores your
-                  resume against them, and gives you a concrete list of improvements. Not generic
-                  career advice — targeted, role-specific guidance.
+                  Our AI reads and understands your documents, then answers your questions with
+                  precise, sourced responses. Whether it&apos;s a financial report, research paper,
+                  or employee handbook — just ask.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-8">
                 <div className="grid grid-cols-2 gap-6">
                   {[
-                    ["98%", "Resume parse accuracy"],
-                    ["< 30s", "Time to match report"],
-                    ["10+", "Actionable suggestions"],
-                    ["5", "Free analyses / month"],
+                    ["4", "Supported file types"],
+                    ["< 5s", "Response time"],
+                    ["5MB", "Max file size"],
+                    ["25", "Free messages"],
                   ].map(([stat, label]) => (
                     <div key={label}>
                       <p className="font-mono text-3xl font-bold text-emerald-600 dark:text-emerald-400">

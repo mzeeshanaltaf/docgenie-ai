@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
 import { ContactDialog } from "@/components/marketing/contact-dialog";
@@ -9,88 +8,109 @@ import {
   ArrowRight,
   Check,
   FileText,
-  Target,
-  Zap,
+  MessageSquare,
+  BookOpen,
+  Upload,
+  Sparkles,
+  LayoutList,
 } from "lucide-react";
 
 /* ─── Animation styles (CSS-only, server-component safe) ───────────── */
 const animStyles = `
-  @keyframes ring-progress {
-    from { stroke-dashoffset: 314; }
-    to   { stroke-dashoffset: 19;  }
-  }
-  .score-ring {
-    stroke-dasharray: 314;
-    stroke-dashoffset: 314;
-    animation: ring-progress 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.5s forwards;
-  }
-  @keyframes score-pop {
-    from { opacity: 0; transform: scale(0.8); }
-    to   { opacity: 1; transform: scale(1);   }
-  }
-  .score-appear { opacity: 0; animation: score-pop 0.4s ease-out 1.4s forwards; }
-
   @keyframes fade-up {
-    from { opacity: 0; transform: translateY(14px); }
+    from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0);    }
   }
-  .au-1 { opacity: 0; animation: fade-up 0.55s ease-out 0.05s forwards; }
-  .au-2 { opacity: 0; animation: fade-up 0.55s ease-out 0.15s forwards; }
-  .au-3 { opacity: 0; animation: fade-up 0.55s ease-out 0.25s forwards; }
-  .au-4 { opacity: 0; animation: fade-up 0.55s ease-out 0.35s forwards; }
-  .au-5 { opacity: 0; animation: fade-up 0.55s ease-out 0.45s forwards; }
-  .au-6 { opacity: 0; animation: fade-up 0.55s ease-out 0.20s forwards; }
+  .au-1 { opacity: 0; animation: fade-up 0.6s ease-out 0.05s forwards; }
+  .au-2 { opacity: 0; animation: fade-up 0.6s ease-out 0.15s forwards; }
+  .au-3 { opacity: 0; animation: fade-up 0.6s ease-out 0.25s forwards; }
+  .au-4 { opacity: 0; animation: fade-up 0.6s ease-out 0.35s forwards; }
+  .au-5 { opacity: 0; animation: fade-up 0.6s ease-out 0.45s forwards; }
+  .au-6 { opacity: 0; animation: fade-up 0.6s ease-out 0.20s forwards; }
+
+  @keyframes chat-msg-1 {
+    0%, 15%  { opacity: 0; transform: translateY(8px); }
+    20%, 100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes chat-msg-2 {
+    0%, 35%  { opacity: 0; transform: translateY(8px); }
+    40%, 100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes chat-msg-3 {
+    0%, 55%  { opacity: 0; transform: translateY(8px); }
+    60%, 100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes chat-msg-4 {
+    0%, 75%  { opacity: 0; transform: translateY(8px); }
+    80%, 100% { opacity: 1; transform: translateY(0); }
+  }
+  .chat-1 { opacity: 0; animation: chat-msg-1 4s ease-out 0.6s forwards; }
+  .chat-2 { opacity: 0; animation: chat-msg-2 4s ease-out 0.6s forwards; }
+  .chat-3 { opacity: 0; animation: chat-msg-3 4s ease-out 0.6s forwards; }
+  .chat-4 { opacity: 0; animation: chat-msg-4 4s ease-out 0.6s forwards; }
+
+  @keyframes typing-dot {
+    0%, 20% { opacity: 0.3; }
+    50% { opacity: 1; }
+    80%, 100% { opacity: 0.3; }
+  }
+  .typing-dot-1 { animation: typing-dot 1.4s ease-in-out infinite; }
+  .typing-dot-2 { animation: typing-dot 1.4s ease-in-out 0.2s infinite; }
+  .typing-dot-3 { animation: typing-dot 1.4s ease-in-out 0.4s infinite; }
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .pulse-soft { animation: pulse-soft 3s ease-in-out infinite; }
 `;
 
 /* ─── Data ─────────────────────────────────────────────────────────── */
-const matchedKeywords = ["React.js", "TypeScript", "Team Leadership", "Communication"];
-const missingKeywords = ["GraphQL", "System Design"];
-
 const features = [
   {
     icon: FileText,
     num: "01",
-    title: "Smart Resume Analysis",
-    metric: "98% accuracy",
+    title: "Smart Document Processing",
+    metric: "4 file types",
     description:
-      "Upload your resume and our AI extracts skills, experience, and achievements with pinpoint accuracy.",
+      "Upload PDFs, Word documents, text files, or CSV spreadsheets. DocGenie extracts and indexes content for instant retrieval.",
   },
   {
-    icon: Target,
+    icon: MessageSquare,
     num: "02",
-    title: "Job Description Matching",
-    metric: "< 30 seconds",
+    title: "AI-Powered Chat",
+    metric: "< 5 seconds",
     description:
-      "Paste any job description and get an instant match score with gap analysis highlighting what recruiters want.",
+      "Ask questions in natural language and get precise answers sourced directly from your documents. No more manual searching.",
   },
   {
-    icon: Zap,
+    icon: LayoutList,
     num: "03",
-    title: "Tailored Recommendations",
-    metric: "10+ suggestions",
+    title: "Session Management",
+    metric: "Unlimited",
     description:
-      "Receive specific, actionable rewrites for your resume tailored to every unique role you apply for.",
+      "Organize conversations by topic with auto-generated titles. Your chat history is always searchable and accessible.",
   },
 ];
 
 const steps = [
   {
     num: "01",
-    title: "Upload Your Resume",
+    title: "Upload Your Document",
     description:
-      "Drop your resume in PDF or Word format. We parse it instantly with zero data retention.",
+      "Drop your PDF, Word doc, text file, or CSV. We process and index it instantly for AI retrieval.",
   },
   {
     num: "02",
-    title: "Paste a Job Description",
+    title: "Start a Conversation",
     description:
-      "Copy the job listing URL. Our AI scrapes and structures the requirements automatically.",
+      "Ask any question about your document in natural language. DocGenie understands context and nuance.",
   },
   {
     num: "03",
-    title: "Get Your Match Report",
+    title: "Get Instant Answers",
     description:
-      "Receive a detailed score, keyword gaps, and actionable rewrite suggestions in seconds.",
+      "Receive AI-powered answers sourced directly from your document content, with precise and relevant responses.",
   },
 ];
 
@@ -99,34 +119,39 @@ const plans = [
     name: "Free",
     price: "$0",
     period: "forever",
-    desc: "For occasional job seekers",
-    features: ["5 resume analyses / month", "Basic match score", "PDF export"],
+    desc: "For getting started",
+    features: [
+      "5 document credits",
+      "25 AI messages",
+      "PDF, DOCX, TXT, CSV support",
+      "Unlimited chat sessions",
+    ],
     cta: "Get started free",
     highlight: false,
   },
   {
     name: "Pro",
-    price: "$12",
+    price: "$9",
     period: "/ month",
-    desc: "For active job seekers",
+    desc: "For power users",
     features: [
-      "Unlimited analyses",
-      "Detailed gap analysis",
-      "Keyword recommendations",
-      "Cover letter drafts",
+      "50 document credits / month",
+      "500 AI messages / month",
+      "Priority processing",
+      "Advanced document analysis",
       "Priority support",
     ],
-    cta: "Start free trial",
+    cta: "Coming soon",
     highlight: true,
   },
   {
     name: "Enterprise",
     price: "Custom",
     period: "contact us",
-    desc: "For teams and agencies",
+    desc: "For teams and organizations",
     features: [
       "Everything in Pro",
-      "Bulk analysis",
+      "Unlimited documents",
       "API access",
       "Custom integrations",
       "Dedicated account manager",
@@ -163,8 +188,8 @@ export default function LandingPage() {
               <div>
                 <div className="au-1">
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/8 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    AI-Powered Resume Matching
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-soft" />
+                    AI-Powered Document Q&A
                   </span>
                 </div>
 
@@ -172,14 +197,15 @@ export default function LandingPage() {
                   className="au-2 mt-5 text-5xl leading-[1.08] tracking-tight md:text-6xl lg:text-[4.5rem]"
                   style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
                 >
-                  Land interviews,
+                  Your documents,
                   <br />
-                  <span className="text-emerald-600 dark:text-emerald-400">not rejection</span> emails.
+                  <span className="text-emerald-600 dark:text-emerald-400">answered.</span>
                 </h1>
 
                 <p className="au-3 mt-6 max-w-120 text-lg leading-relaxed text-muted-foreground">
-                  ResuMatchAI scores your resume against any job description
-                  and tells you exactly what to fix — before you click apply.
+                  Upload any PDF, Word doc, or spreadsheet and start a
+                  conversation. DocGenie reads, understands, and answers your
+                  questions instantly.
                 </p>
 
                 <div className="au-4 mt-8 flex flex-wrap items-center gap-3">
@@ -210,91 +236,80 @@ export default function LandingPage() {
                 </div>
 
                 <p className="au-5 mt-5 text-xs text-muted-foreground">
-                  No credit card required · 5 free analyses monthly · Cancel anytime
+                  No credit card required · 5 document credits · 25 AI messages
                 </p>
               </div>
 
-              {/* Right: animated match report card */}
+              {/* Right: animated chat interface mockup */}
               <div className="au-6">
                 <div className="relative">
                   {/* Ambient glow */}
                   <div className="absolute -inset-6 rounded-3xl bg-emerald-500/10 blur-3xl dark:bg-emerald-500/8" />
 
-                  <div className="relative rounded-2xl border border-border bg-card p-6 shadow-2xl">
-                    {/* Card header */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">
-                          Match Report
-                        </p>
-                        <p className="mt-1 text-sm font-semibold">Senior Frontend Engineer</p>
-                        <p className="text-xs text-muted-foreground">Acme Corp · Remote</p>
+                  <div className="relative rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
+                    {/* Chat header */}
+                    <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10">
+                        <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Analyzing
+                      <div>
+                        <p className="text-sm font-semibold">DocGenie</p>
+                        <p className="text-[10px] text-muted-foreground">Q4_Financial_Report.pdf</p>
+                      </div>
+                      <span className="ml-auto flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-soft" />
+                        Active
                       </span>
                     </div>
 
-                    {/* Score ring */}
-                    <div className="my-6 flex items-center justify-center">
-                      <div className="relative h-40 w-40">
-                        <svg viewBox="0 0 120 120" className="h-full w-full">
-                          {/* Track */}
-                          <circle
-                            cx="60" cy="60" r="50"
-                            fill="none" strokeWidth="8"
-                            stroke="currentColor"
-                            className="text-muted/40"
-                          />
-                          {/* Progress — starts at top via SVG transform */}
-                          <circle
-                            cx="60" cy="60" r="50"
-                            fill="none" strokeWidth="8"
-                            stroke="#10b981"
-                            strokeLinecap="round"
-                            transform="rotate(-90 60 60)"
-                            className="score-ring"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center score-appear">
-                          <span className="font-mono text-4xl font-bold leading-none tabular-nums">94</span>
-                          <span className="font-mono text-xs text-muted-foreground">% match</span>
-                          <span className="mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            Excellent
-                          </span>
+                    {/* Chat messages */}
+                    <div className="space-y-3 px-5 py-5" style={{ minHeight: "280px" }}>
+                      {/* User message */}
+                      <div className="chat-1 flex justify-end">
+                        <div className="max-w-[75%] rounded-2xl rounded-tr-md bg-emerald-600 px-4 py-2.5 text-sm text-white dark:bg-emerald-500 dark:text-slate-950">
+                          What was the total revenue in Q4?
+                        </div>
+                      </div>
+
+                      {/* AI response */}
+                      <div className="chat-2 flex gap-2.5">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 mt-0.5">
+                          <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div className="max-w-[80%] rounded-2xl rounded-tl-md bg-muted px-4 py-2.5 text-sm">
+                          Total revenue for Q4 was <span className="font-semibold text-emerald-600 dark:text-emerald-400">$4.2M</span>, representing a 23% increase over Q3. The primary drivers were enterprise contracts and new market expansion.
+                        </div>
+                      </div>
+
+                      {/* User follow-up */}
+                      <div className="chat-3 flex justify-end">
+                        <div className="max-w-[75%] rounded-2xl rounded-tr-md bg-emerald-600 px-4 py-2.5 text-sm text-white dark:bg-emerald-500 dark:text-slate-950">
+                          Which region contributed the most?
+                        </div>
+                      </div>
+
+                      {/* AI typing indicator */}
+                      <div className="chat-4 flex gap-2.5">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 mt-0.5">
+                          <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div className="rounded-2xl rounded-tl-md bg-muted px-4 py-3">
+                          <div className="flex gap-1">
+                            <span className="typing-dot-1 h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                            <span className="typing-dot-2 h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                            <span className="typing-dot-3 h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Keyword analysis */}
-                    <div className="border-t border-border pt-4">
-                      <p className="mb-3 font-mono text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">
-                        Keyword Analysis
-                      </p>
-                      <div className="space-y-1.5">
-                        {matchedKeywords.map((kw) => (
-                          <div
-                            key={kw}
-                            className="flex items-center justify-between rounded-md bg-emerald-500/6 px-3 py-2"
-                          >
-                            <span className="text-sm">{kw}</span>
-                            <span className="font-mono text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                              ✓ Match
-                            </span>
-                          </div>
-                        ))}
-                        {missingKeywords.map((kw) => (
-                          <div
-                            key={kw}
-                            className="flex items-center justify-between rounded-md bg-destructive/6 px-3 py-2"
-                          >
-                            <span className="text-sm text-muted-foreground">{kw}</span>
-                            <span className="font-mono text-[10px] font-semibold text-destructive">
-                              ✗ Gap
-                            </span>
-                          </div>
-                        ))}
+                    {/* Input bar */}
+                    <div className="border-t border-border px-5 py-3">
+                      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                        <span className="flex-1 text-xs text-muted-foreground">Ask about your document...</span>
+                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-600 dark:bg-emerald-500">
+                          <ArrowRight className="h-3 w-3 text-white dark:text-slate-950" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -315,10 +330,10 @@ export default function LandingPage() {
                 className="mt-3 text-3xl tracking-tight md:text-4xl"
                 style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
               >
-                Everything you need to stand out
+                Everything you need to unlock your documents
               </h2>
               <p className="mt-3 max-w-md mx-auto text-muted-foreground">
-                Our AI does the heavy lifting so you can focus on getting interviews.
+                From upload to insight in seconds. No manual searching, no endless scrolling.
               </p>
             </div>
 
@@ -328,7 +343,6 @@ export default function LandingPage() {
                   key={title}
                   className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:border-emerald-500/30 hover:shadow-md"
                 >
-                  {/* Background step number */}
                   <span
                     className="pointer-events-none absolute right-3 top-2 select-none font-mono text-8xl font-bold leading-none text-muted-foreground/10"
                     aria-hidden
@@ -365,22 +379,20 @@ export default function LandingPage() {
                 className="mt-3 text-3xl tracking-tight md:text-4xl"
                 style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
               >
-                Three steps to your match report
+                Three steps to your answers
               </h2>
               <p className="mt-3 text-muted-foreground">
-                From upload to insights in under 60 seconds.
+                From upload to insight in under a minute.
               </p>
             </div>
 
             <div className="grid gap-8 md:grid-cols-3">
               {steps.map(({ num, title, description }, i) => (
                 <div key={num} className="relative flex flex-col items-center px-4 text-center">
-                  {/* Connector */}
                   {i < steps.length - 1 && (
                     <div className="absolute left-[calc(50%+2.5rem)] top-8 hidden h-px w-[calc(100%-5rem)] border-t border-dashed border-border md:block" />
                   )}
 
-                  {/* Step circle */}
                   <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-500/30 bg-emerald-500/8">
                     <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
                       {num}
@@ -395,8 +407,42 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── Supported Formats ──────────────────────────────────────── */}
+        <section className="border-y border-border bg-muted/20 px-4 py-16">
+          <div className="container mx-auto max-w-6xl text-center">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Supported formats
+            </p>
+            <h2
+              className="mt-3 text-2xl tracking-tight md:text-3xl"
+              style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
+            >
+              Works with your documents
+            </h2>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
+              {[
+                { ext: "PDF", color: "text-red-500", bg: "bg-red-500/10" },
+                { ext: "DOCX", color: "text-blue-500", bg: "bg-blue-500/10" },
+                { ext: "TXT", color: "text-amber-500", bg: "bg-amber-500/10" },
+                { ext: "CSV", color: "text-emerald-500", bg: "bg-emerald-500/10" },
+              ].map(({ ext, color, bg }) => (
+                <div
+                  key={ext}
+                  className={`flex h-20 w-20 flex-col items-center justify-center rounded-xl border border-border ${bg}`}
+                >
+                  <Upload className={`h-5 w-5 ${color}`} />
+                  <span className={`mt-1 font-mono text-xs font-bold ${color}`}>{ext}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-sm text-muted-foreground">
+              Up to 5MB per file · Max 20 pages per document
+            </p>
+          </div>
+        </section>
+
         {/* ── Pricing ───────────────────────────────────────────────── */}
-        <section id="pricing" className="border-y border-border bg-muted/20 px-4 py-20">
+        <section id="pricing" className="px-4 py-20">
           <div className="container mx-auto max-w-6xl">
             <div className="mb-14 text-center">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -515,12 +561,12 @@ export default function LandingPage() {
                   className="mt-4 text-3xl text-white md:text-4xl"
                   style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
                 >
-                  Stop guessing. Start matching.
+                  Stop searching. Start asking.
                 </h2>
                 <p className="mt-4 text-slate-400">
-                  Join thousands of job seekers already using AI to get ahead.
+                  Upload your first document and get answers in seconds.
                   <br className="hidden sm:block" />
-                  Your first 5 analyses are completely free.
+                  5 document credits and 25 messages — completely free.
                 </p>
 
                 <div className="mt-8 flex flex-wrap justify-center gap-3">

@@ -1,17 +1,10 @@
-# ResuMatchAI — Implementation Plan
+# DocGenie — Implementation Plan
 
 ## Context
-The Next.js SaaS boilerplate is complete and running at `http://127.0.0.1:3000`. This plan covers two sequential phases:
-- **Phase 1:** Redesign the landing page using the `frontend-design` skill for production-grade quality
-- **Phase 2:** Implement all application features — n8n integration, API routes, dashboard pages
 
-**n8n backend:** 5 webhook workflows (already implemented) handle all AI logic, data storage, and credit management. Next.js is the thin API proxy layer.
+The codebase was transformed from a **ResuMatchAI** SaaS boilerplate into **DocGenie** — an AI-powered document Q&A application. Users upload documents (PDF, DOCX, TXT, CSV) and chat with them in natural language. The backend is fully implemented in n8n workflows with 8 webhook endpoints. The frontend uses Next.js 16, React 19, Clerk auth, shadcn/ui, Tailwind v4, and next-themes (dark mode).
 
-**Skills to apply:**
-- `frontend-design` — Phase 1 (landing page redesign)
-- `vercel-react-best-practices` — Phase 2 (all dashboard pages and components)
-
-**Dark mode:** Added via `next-themes`. Implemented before the landing page redesign so all UI is authored with both themes in mind from the start.
+**Status:** ✅ Fully implemented and production-ready.
 
 ---
 
@@ -19,243 +12,119 @@ The Next.js SaaS boilerplate is complete and running at `http://127.0.0.1:3000`.
 
 All webhooks: `POST {N8N_WEBHOOK_BASE_URL}/{uuid}` with header `x-api-key: {N8N_API_KEY}`
 
-| Workflow | Env Var | UUID | Event Types |
-|---|---|---|---|
-| **Main** | `N8N_MAIN_WEBHOOK_ID` | `279f5964-5445-4b94-bae3-9a6d29f0dddb` | `process_resume`, `scrape_jd`, `resume_match` |
-| **Analytics** | `N8N_ANALYTICS_WEBHOOK_ID` | `85e48153-e99d-40cc-9663-a7c0fd845c44` | `user_analytics`, `all_analytics` |
-| **Credits** | `N8N_CREDITS_WEBHOOK_ID` | `1543b332-7b5f-4338-a390-74767805c396` | `signup_credits`, `get_remaining_credit`, `credit_history` |
-| **Data** | `N8N_DATA_WEBHOOK_ID` | `26dee7a9-19a0-4f65-af48-506384f50370` | `get_resume`, `get_jds`, `get_job_match_summary` |
-| **Delete** | `N8N_DELETE_WEBHOOK_ID` | `2df21026-2a38-4b57-9399-cc9fc848388f` | `delete_resume`, `delete_jd`, `delete_job_match_summary` |
-
-Every JSON body must include `event_type` as the internal router field for n8n switch nodes.
-
----
-
-## Phase 1: Landing Page Redesign
-
-### Step 0: Dark Mode Setup (do this before any UI work)
-
-**Goal:** Wire up system-aware dark mode with a user toggle. All subsequent UI is authored with both themes in mind.
-
-**Package to install:**
-```bash
-npm install next-themes
-```
-
-**Files to create/modify:**
-
-| File | Action | Purpose |
+| Workflow | Env Var | Purpose |
 |---|---|---|
-| `src/components/theme-provider.tsx` | **Create** | Thin wrapper re-exporting `ThemeProvider` from next-themes as a Client Component |
-| `src/app/layout.tsx` | **Modify** | Wrap `<body>` children with `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>` |
-| `src/components/ui/theme-toggle.tsx` | **Create** | Sun/Moon icon button using shadcn `Button` (variant ghost, size icon); cycles light → dark → system |
-| `src/components/marketing/navbar.tsx` | **Modify** | Add `<ThemeToggle />` in the right-side action area (before auth buttons) |
-| `src/components/dashboard/top-nav.tsx` | **Modify** | Add `<ThemeToggle />` next to `<UserButton />` |
-
-**How it works:**
-- `next-themes` uses the `class` attribute strategy: adds `dark` class to `<html>` when dark mode is active
-- Tailwind CSS v4 + shadcn/ui CSS variables already have `.dark { ... }` variants in `globals.css` — no Tailwind config changes needed
-- `suppressHydrationWarning` must be added to `<html>` in root layout (next-themes sets class client-side)
-- Default: respects OS system preference; user toggle persists to `localStorage`
-
-**`theme-provider.tsx` pattern:**
-```tsx
-"use client";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
-export function ThemeProvider({ children, ...props }: React.ComponentProps<typeof NextThemesProvider>) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
-}
-```
-
-**`theme-toggle.tsx` pattern:**
-```tsx
-"use client";
-import { useTheme } from "next-themes";
-import { Sun, Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-// Toggle between "light" and "dark"; show Moon when light, Sun when dark
-```
-
-**Verification:** Toggle in navbar switches between light and dark; preference persists on page reload.
+| **Ingestion** | `N8N_INGESTION_WEBHOOK_ID` | Upload & process documents |
+| **AI Assistant** | `N8N_AI_ASSISTANT_WEBHOOK_ID` | Chat with documents |
+| **Title Generator** | `N8N_TITLE_GENERATOR_WEBHOOK_ID` | Auto-generate chat session titles |
+| **Analytics** | `N8N_ANALYTICS_WEBHOOK_ID` | User analytics |
+| **Credits** | `N8N_CREDITS_WEBHOOK_ID` | Credit & message balance management |
+| **Data** | `N8N_DATA_WEBHOOK_ID` | Fetch documents & chat history |
+| **Delete** | `N8N_DELETE_WEBHOOK_ID` | Delete documents |
+| **Contact** | `N8N_CONTACT_FORM_WEBHOOK_ID` | Contact form submissions |
 
 ---
 
-### Step 1: Landing Page Visual Redesign
+## Phase 1: Marketing Landing Page ✅
 
-**Goal:** Transform the existing functional landing page into a distinctive, production-grade marketing site using the `frontend-design` skill.
+### 1.1 Global Branding
+- [layout.tsx](src/app/layout.tsx) — Metadata updated to "DocGenie"
+- [package.json](package.json) — Name set to `"docgenie"`
+- [.env.example](.env.example) — Webhook env vars updated for DocGenie
 
-**Invoke:** `frontend-design` skill on the landing page. Design must look great in both light and dark modes.
+### 1.2 Navbar & Footer
+- [navbar.tsx](src/components/marketing/navbar.tsx) — "DocGenie" brand, `BookOpen` icon, Features/How it works/Pricing links
+- [footer.tsx](src/components/marketing/footer.tsx) — DocGenie brand, "AI-powered document Q&A" tagline
 
-**Sections to redesign:**
+### 1.3 Landing Page
+- [page.tsx](src/app/(marketing)/page.tsx) — Full rewrite with:
+  - Hero: "Your documents, answered." with animated chat mockup
+  - Features: Smart Document Processing, AI-Powered Chat, Session Management
+  - How it works: Upload → Chat → Get Answers
+  - Pricing: Free (5 credits, 25 messages) + Pro (Coming Soon) + Enterprise
+  - CTA: "Stop searching. Start asking."
 
-| Section | Current State | Target |
+### 1.4 Static Pages
+- [about/page.tsx](src/app/(marketing)/about/page.tsx) — DocGenie mission
+- [privacy/page.tsx](src/app/(marketing)/privacy/page.tsx) — Document handling policies
+- [terms/page.tsx](src/app/(marketing)/terms/page.tsx) — Service terms
+
+### 1.5 Contact Form API
+- [contact/route.ts](src/app/api/contact/route.ts) — Uses `N8N_CONTACT_FORM_WEBHOOK_ID`
+
+---
+
+## Phase 2: Backend Implementation ✅
+
+### 2.1 Types
+- [n8n.ts](src/types/n8n.ts) — Full DocGenie type definitions:
+  - `DocumentRecord`, `ChatMessage`, `ChatSession`
+  - `UserAnalyticsResponse`, `CreditBalanceResponse`, `CreditTransaction`
+  - `IngestionResponse`, `ChatResponse`, `TitleResponse`, `DeleteResponse`
+
+### 2.2 N8N Integration Functions
+- [n8n.ts](src/lib/n8n.ts) — Core `callN8nWebhook` + `callN8nWebhookMultipart`
+- [n8n-documents.ts](src/lib/n8n-documents.ts) — `uploadDocument`, `chatWithDocument`, `generateTitle`
+- [n8n-analytics.ts](src/lib/n8n-analytics.ts) — `getUserAnalytics` → `{ total_documents_processed, credit_balance, message_balance }`
+- [n8n-credits.ts](src/lib/n8n-credits.ts) — `signupCredits`, `getRemainingCredits` → `{ credit_balance, message_balance }`
+- [n8n-data.ts](src/lib/n8n-data.ts) — `getUserDocuments`, `getChatHistory`
+- [n8n-delete.ts](src/lib/n8n-delete.ts) — `deleteDocuments(userId, fileIds[])`
+
+### 2.3 API Routes
+| Route | Method | Purpose |
 |---|---|---|
-| **Navbar** | Basic sticky nav | Polished with blur backdrop, smooth hover states |
-| **Hero** | Simple headline + CTAs | Strong visual hierarchy, compelling copy, gradient accents |
-| **Features** | 3-card grid | Distinctive card design with icon treatments |
-| **How It Works** | Numbered steps | Visual step flow with connecting elements |
-| **Pricing** | Placeholder tier cards | Polished pricing cards with feature lists, highlighted Pro tier |
-| **CTA Banner** | Basic banner | High-contrast conversion section |
-| **Footer** | 4-column links | Clean footer with brand presence |
+| `/api/documents/upload` | POST | Multipart upload, validates type + 5MB limit |
+| `/api/documents/list` | GET | Fetch user's documents |
+| `/api/documents/delete` | DELETE | Delete documents by file IDs |
+| `/api/chat/message` | POST | Send message, get AI response |
+| `/api/chat/title` | POST | Generate session title |
+| `/api/chat/history` | GET | Fetch all chat sessions |
+| `/api/analytics` | GET | User statistics |
+| `/api/credits/balance` | GET | Credit + message balance |
+| `/api/credits/history` | GET | Transaction history |
+| `/api/contact` | POST | Contact form submission |
+| `/api/webhooks/clerk` | POST | Clerk user.created → signup credits |
 
-**Files affected:**
-- `src/app/(marketing)/page.tsx` — main redesign target
-- `src/components/marketing/navbar.tsx` — navbar polish (ThemeToggle already added in Step 0)
-- `src/components/marketing/footer.tsx` — footer polish
+### 2.4 Dashboard Context
+- [dashboard-data.tsx](src/contexts/dashboard-data.tsx) — State: `analytics`, `documents`, `chatSessions`, `creditBalance`, `messageBalance`, `creditHistory`
+  - Methods: `refreshDocuments()`, `refreshChatSessions()`, `refreshCredits()`, `refreshAll()`
 
-**Verification:** Landing page at `http://127.0.0.1:3000` looks production-ready in both light and dark modes; all CTAs work; Clerk modal opens on "Get started"
+### 2.5 Dashboard Navigation
+- [sidebar.tsx](src/components/dashboard/sidebar.tsx) — Nav: Overview, Documents, Chat, Settings
+- [top-nav.tsx](src/components/dashboard/top-nav.tsx) — Breadcrumb map, credit + message balance
+- [credit-display.tsx](src/components/dashboard/credit-display.tsx) — Dual balance display
+
+### 2.6 Dashboard Home
+- [dashboard/page.tsx](src/app/(dashboard)/dashboard/page.tsx) — 3 stat cards + recent chat sessions + empty state CTA
+
+### 2.7 Documents Page
+- [documents/page.tsx](src/app/(dashboard)/dashboard/documents/page.tsx)
+- [document-upload.tsx](src/components/dashboard/documents/document-upload.tsx) — Drag-and-drop, type validation, 5MB limit
+- [document-list.tsx](src/components/dashboard/documents/document-list.tsx) — File list with delete confirmation
+
+### 2.8 Chat Page
+- [chat/page.tsx](src/app/(dashboard)/dashboard/chat/page.tsx)
+- [chat-sidebar.tsx](src/components/dashboard/chat/chat-sidebar.tsx) — Session list, "New Chat" button, UUID session IDs
+- [chat-messages.tsx](src/components/dashboard/chat/chat-messages.tsx) — Scrollable message area, user/AI bubbles, typing indicator
+- [chat-input.tsx](src/components/dashboard/chat/chat-input.tsx) — Textarea, Enter to send, optimistic UI, auto-title on first message
+
+### 2.9 Settings Page
+- [settings/page.tsx](src/app/(dashboard)/dashboard/settings/page.tsx)
+- [credits-section.tsx](src/components/dashboard/settings/credits-section.tsx) — Credit + message balance cards + transaction history
+
+### 2.10 Loading States
+- [documents/loading.tsx](src/app/(dashboard)/dashboard/documents/loading.tsx)
+- [chat/loading.tsx](src/app/(dashboard)/dashboard/chat/loading.tsx)
 
 ---
 
-## Phase 2: Application Feature Implementation
+## Architecture Decisions
 
-**Goal:** Build all ResuMatchAI features — credits, resume upload, JD matching, history, settings.
-
-### Step 1: Environment Variables
-
-Add to `.env.local`:
-```
-N8N_API_KEY=<your_n8n_header_auth_value>
-N8N_MAIN_WEBHOOK_ID=279f5964-5445-4b94-bae3-9a6d29f0dddb
-N8N_ANALYTICS_WEBHOOK_ID=85e48153-e99d-40cc-9663-a7c0fd845c44
-N8N_CREDITS_WEBHOOK_ID=1543b332-7b5f-4338-a390-74767805c396
-N8N_DATA_WEBHOOK_ID=26dee7a9-19a0-4f65-af48-506384f50370
-N8N_DELETE_WEBHOOK_ID=2df21026-2a38-4b57-9399-cc9fc848388f
-```
-
-### Step 2: Install shadcn/ui Components
-```bash
-npx shadcn@latest add progress table tabs textarea input dialog sonner tooltip skeleton
-```
-
-### Step 3: Type Definitions
-
-Create `src/types/n8n.ts` with all request/response types (see Types section below).
-
-### Step 4: Update n8n Client (`src/lib/n8n.ts`)
-
-Two changes:
-1. Add `"x-api-key": N8N_API_KEY` header to existing `callN8nWebhook()`
-2. Add new `callN8nWebhookMultipart(webhookId, formData)` for file uploads (do NOT set Content-Type — let fetch auto-set multipart boundary)
-
-### Step 5: n8n Category Helper Libraries (server-only)
-
-Five thin wrapper files that add `event_type` and call the core functions:
-
-- `src/lib/n8n-main.ts` → `processResume()`, `scrapeJd()`, `runResumeMatch()`
-- `src/lib/n8n-analytics.ts` → `getUserAnalytics()`
-- `src/lib/n8n-credits.ts` → `signupCredits()`, `getRemainingCredits()`, `getCreditHistory()`
-- `src/lib/n8n-data.ts` → `getResumes()`, `getJds()`, `getJobMatchSummary()`
-- `src/lib/n8n-delete.ts` → `deleteResume()`, `deleteJd()`, `deleteJobMatchSummary()`
-
-### Step 6: Clerk Webhook Update
-
-`src/app/api/webhooks/clerk/route.ts` — implement `user.created` event:
-```typescript
-case "user.created":
-  await signupCredits(event.data.id); // gives new user 5 free credits
-  break;
-```
-
-### Step 7: API Routes (12 total, server-side n8n proxy)
-
-All routes: call `getAuth(req)` → return 401 if no `userId` → forward to n8n helpers.
-
-```
-POST   /api/resume/upload         → process_resume (multipart)
-GET    /api/resume/list           → get_resume
-DELETE /api/resume/[id]           → delete_resume
-POST   /api/jd/submit             → scrape_jd (URL)
-GET    /api/jd/list               → get_jds
-DELETE /api/jd/[id]               → delete_jd
-POST   /api/match/run             → resume_match
-GET    /api/match/history         → get_job_match_summary
-DELETE /api/match/[id]            → delete_job_match_summary
-GET    /api/analytics             → user_analytics
-GET    /api/credits/balance       → get_remaining_credit
-GET    /api/credits/history       → credit_history
-```
-
-Build order: credits → analytics → resume list/delete → JD → match history/delete → match run → resume upload
-
-### Step 8: Shared Dashboard Components (Server Components)
-
-- `src/components/dashboard/credit-badge.tsx` — Fetches balance, renders as pill (`X credits`)
-- `src/components/dashboard/stats-cards.tsx` — 3 stat cards (analyses run, avg score, last analysis)
-- `src/components/dashboard/recent-matches.tsx` — Top-5 recent matches list
-
-### Step 9: Dashboard Shell Updates
-
-- `src/components/dashboard/top-nav.tsx` — Replace `breadcrumb` prop with `usePathname()` lookup:
-  ```typescript
-  const map = { "/dashboard": "Overview", "/dashboard/match": "Resume Match", ... }
-  ```
-- `src/components/dashboard/sidebar.tsx` — Add credit badge display at bottom of nav
-- `src/app/(dashboard)/layout.tsx` — Add `<Toaster position="bottom-right" richColors />` + server-fetch credit balance for sidebar
-
-### Step 10: Dashboard Overview (`/dashboard`)
-
-Update existing page. Server Component with `Promise.all` for parallel fetches:
-```typescript
-const [analytics, credits] = await Promise.all([
-  getUserAnalytics(userId),
-  getRemainingCredits(userId),
-]);
-```
-Wrap each in try/catch — zero-state fallback if n8n is unavailable.
-
-### Step 11: Resume Match Page (`/dashboard/match`)
-
-New page. Server Component pre-fetches existing resume list. Passes to `<MatchStepper>` (Client Component).
-
-**3-step wizard:**
-- **Step 1 — Choose Resume:** Grid of resume cards (select existing) + "Upload new" inline upload
-- **Step 2 — Job Description:** URL input (tab shell ready for "Paste Text" tab when n8n adds support)
-- **Step 3 — Results:** Animated score ring (0–100), matched/missing keywords, recommendations, gap analysis
-
-**Client state:** `currentStep`, `selectedResumeId`, `submittedJdId`, `matchResult`, `isLoading`
-
-**New components:**
-```
-src/components/dashboard/match/match-stepper.tsx     # Wizard shell (client)
-src/components/dashboard/match/resume-picker.tsx     # Resume selection cards (client)
-src/components/dashboard/match/resume-upload.tsx     # Drag-and-drop upload (client)
-src/components/dashboard/match/jd-input.tsx          # URL input with tab shell (client)
-src/components/dashboard/match/match-results.tsx     # Results display (client)
-src/components/dashboard/match/score-ring.tsx        # Animated SVG circle (client)
-```
-
-### Step 12: History Page (`/dashboard/history`)
-
-Server Component fetches all match summaries. `<HistoryTable>` (Client Component) handles client-side sort/filter. "View" button opens `<MatchDetailDialog>` with the full result as prop (no extra fetch).
-
-```
-src/components/dashboard/history/history-table.tsx         # Sortable table (client)
-src/components/dashboard/history/match-detail-dialog.tsx   # Detail modal (client)
-```
-
-### Step 13: Settings Page (`/dashboard/settings`)
-
-Three `<Tabs>` sections:
-- **Profile** — Embed Clerk `<UserProfile>` component
-- **Credits** — Balance display + `<CreditsSection>` (transaction history)
-- **Account** — Danger zone (placeholder)
-
-```
-src/components/dashboard/settings/credits-section.tsx   # Balance + history (client)
-```
-
-### Step 14: Loading Skeletons
-
-Add `loading.tsx` for all 4 dashboard pages using shadcn `<Skeleton>` components.
-
-### Step 15: Toast Notifications
-
-Use `sonner` `toast()` in all client components:
-- Upload success → `toast.success("Resume uploaded")`
-- Match complete → `toast.success("Analysis complete")`
-- Delete → `toast.success("Deleted successfully")`
-- Errors → `toast.error("Something went wrong. Please try again.")`
+- **Session IDs:** Generated client-side via `crypto.randomUUID()`. N8N creates the session record on first message — no "create session" API needed.
+- **File types:** PDF, DOCX, TXT, CSV — validated on both client and server.
+- **File size limit:** 5MB enforced at API route level.
+- **Credit model:** `credit_balance` (document uploads) + `message_balance` (chat messages) tracked separately.
+- **Context caching:** `DashboardDataProvider` fetches all data once on mount; selective refresh after mutations.
 
 ---
 
@@ -263,95 +132,33 @@ Use `sonner` `toast()` in all client components:
 
 | File | SC/CC | Reason |
 |---|---|---|
-| `dashboard/page.tsx` | **Server** | Parallel data fetching |
-| `stats-cards.tsx` | **Server** | Pure display |
-| `credit-badge.tsx` | **Server** | Fetched in layout |
-| `recent-matches.tsx` | **Server** | Pure display |
-| `match/page.tsx` | **Server** | Pre-fetches resume list |
-| `match/match-stepper.tsx` | **Client** | Wizard state |
-| `match/resume-upload.tsx` | **Client** | File drag/drop events |
-| `match/jd-input.tsx` | **Client** | Controlled input |
-| `match/match-results.tsx` | **Client** | Animated display |
-| `match/score-ring.tsx` | **Client** | SVG animation |
-| `history/page.tsx` | **Server** | Pre-fetches all matches |
-| `history/history-table.tsx` | **Client** | Sort/filter state |
-| `history/match-detail-dialog.tsx` | **Client** | Dialog state |
-| `settings/page.tsx` | **Server** | Pre-fetches credits |
-| `settings/credits-section.tsx` | **Client** | Tab interactions |
-| `sidebar.tsx` | **Client** | Already CC (usePathname) |
-| `top-nav.tsx` | **Client** | Already CC (usePathname) |
+| `dashboard/page.tsx` | **Server** | Static data display |
+| `documents/page.tsx` | **Client** | Upload interactions |
+| `chat/page.tsx` | **Client** | Real-time chat state |
+| `settings/page.tsx` | **Server** | Static shell |
+| `credits-section.tsx` | **Client** | Tab interactions |
+| `document-upload.tsx` | **Client** | File drag/drop events |
+| `document-list.tsx` | **Client** | Delete confirmations |
+| `chat-sidebar.tsx` | **Client** | Session switching |
+| `chat-messages.tsx` | **Client** | Scroll/animation state |
+| `chat-input.tsx` | **Client** | Controlled textarea |
+| `sidebar.tsx` | **Client** | `usePathname()` |
+| `top-nav.tsx` | **Client** | `usePathname()` |
 
 ---
 
-## Key Types (`src/types/n8n.ts`)
+## Verification Checklist
 
-```typescript
-// Main Workflow
-export type ProcessResumeResponse = { file_id: string; file_name: string };
-export type ScrapeJdResponse = { url_id: string; jd_url?: string };
-export type ResumeMatchResponse = {
-  match_score: number;           // 0–100
-  summary: string;
-  matched_keywords: string[];
-  missing_keywords: string[];
-  recommendations: string[];
-  gap_analysis: string;
-  strengths: string[];
-  // NOTE: Verify exact field names against live n8n output before building match-results.tsx
-};
-
-// Analytics
-export type UserAnalyticsResponse = {
-  total_resume_processed: number;
-  total_jds_processed: number;
-  total_job_match_summary_processed: number;
-};
-
-// Credits
-export type CreditBalanceResponse = { current_balance: number };
-export type CreditTransaction = {
-  transaction_type: string;
-  credits_delta: number;
-  description: string;
-  created_at: string;
-};
-export type CreditHistoryResponse = CreditTransaction[];
-
-// Data
-export type ResumeRecord = {
-  file_id: string;
-  file_name: string;
-  file_size: number;
-  file_base64: string;
-};
-export type JdRecord = {
-  url_id: string;
-  jd_url: string;
-  is_jd: boolean;
-  jd_object: Record<string, unknown>;
-};
-export type JobMatchSummary = {
-  file_id: string; url_id: string; user_id: string;
-  match_score: number; summary: string;
-  matched_keywords: string[]; missing_keywords: string[];
-  recommendations: string[]; gap_analysis: string; strengths: string[];
-  created_at: string; file_name?: string; jd_url?: string;
-};
-
-// Delete
-export type DeleteResponse = { success: boolean; message?: string };
-```
-
----
-
-## End-to-End Verification
-
-1. Sign up → Clerk fires `user.created` webhook → user gets 5 free credits in n8n
-2. Dashboard overview shows real stats (zeroes for new user = correct)
-3. Upload a PDF resume → `file_id` returned from n8n
-4. Submit job URL → n8n scrapes it, `url_id` returned
-5. Run match → animated score ring + keywords + recommendations displayed
-6. History page shows the completed match with correct score
-7. Settings → Credits tab shows 4 credits remaining (1 used)
-8. Delete a match from history → row removed from table
-9. `npm run build` passes with no TypeScript errors
+1. `npm run build` — No TypeScript errors
+2. Sign up via Clerk → redirected to `/dashboard` → signup credits issued
+3. Dashboard shows 0 documents, credits from signup
+4. Upload a PDF → appears in documents list, credit decremented
+5. Start new chat → send message → AI responds → title auto-generated
+6. Switch between chat sessions → messages persist
+7. Delete document → removed from list
+8. Settings → shows credit + message balance + transaction history
+9. Contact form → submits successfully
+10. Test all file types: PDF, DOCX, TXT, CSV
+11. Test error states: file >5MB, insufficient credits, insufficient messages
+12. Dark mode works across all pages
+13. Mobile responsiveness (sidebar collapses, chat layout adjusts)

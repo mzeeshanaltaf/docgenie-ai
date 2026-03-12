@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { ContactDialog } from "./contact-dialog";
 
 const links = {
@@ -27,15 +27,15 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/10">
-                <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span className="font-semibold">ResuMatchAI</span>
+              <span className="font-semibold">DocGenie</span>
             </Link>
             <p className="mt-3 max-w-52 text-sm leading-relaxed text-muted-foreground">
-              AI-powered resume matching for modern job seekers. Know your fit score before you apply.
+              AI-powered document Q&A. Upload your documents and get instant answers.
             </p>
             <p className="mt-5 font-mono text-xs text-muted-foreground/50">
-              © {new Date().getFullYear()} ResuMatchAI
+              © {new Date().getFullYear()} DocGenie
             </p>
           </div>
 

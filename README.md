@@ -1,46 +1,41 @@
-# ResuMatchAI
+# DocGenie
 
-An AI-powered SaaS application that matches resumes against job descriptions, providing intelligent scoring, gap analysis, and personalized recommendations using Claude AI via n8n workflows.
-
-**Live Demo:** [resumatch.zeeshanai.cloud](https://resumatch.zeeshanai.cloud)
+An AI-powered SaaS application that lets users upload documents and chat with them using natural language. Upload PDFs, DOCX, TXT, or CSV files and get instant AI-powered answers — no more searching through pages of content.
 
 ## Features
 
-### 🎯 Job Fit Analysis
-- Upload your resume and paste a job description
-- Get an instant AI match score (0-100%)
-- See detailed analysis of strengths and gaps
-- Get personalized improvement recommendations
-- Receive ATS optimization suggestions
+### 📄 Document Processing
+- Upload PDF, DOCX, TXT, and CSV files (up to 5MB each)
+- Drag-and-drop file upload with instant processing
+- Document library with file management and deletion
+- 5 document credits on signup (free tier)
 
-### 🔍 Resume Screening (Recruiter)
-- Upload multiple candidate resumes
-- Screen against a job posting
-- Ranked results sorted by match score
-- Bulk candidate evaluation in minutes
-- Detailed screening reports for each resume
+### 💬 AI-Powered Chat
+- Natural language Q&A against your documents
+- Multiple chat sessions with auto-generated titles
+- Full chat history preserved across sessions
+- 25 message credits on signup (free tier)
 
 ### 📊 Smart Dashboard
-- Track all past analyses in one place
-- View analytics and usage statistics
-- Manage your credit balance
-- See recent screening results
-- Search and filter analysis history
+- Overview with document count, credit balance, and message balance
+- Recent chat sessions with one-click navigation
+- Real-time credit tracking after every action
+- Transaction history for all credit usage
 
 ### ⚡ Credit System
-- Free tier: 5 analyses per month
-- Pay-as-you-go for additional analyses
-- Real-time credit tracking
-- Transaction history
+- **Document credits** — consumed on each document upload
+- **Message credits** — consumed on each chat message
+- Free tier: 5 document credits + 25 message credits on signup
+- Transaction history in Settings
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16 (App Router), TypeScript, React 18, Tailwind CSS v4
-- **UI Components:** shadcn/ui (Slate theme)
+- **Frontend:** Next.js 16 (App Router), TypeScript, React 19, Tailwind CSS v4
+- **UI Components:** shadcn/ui (Slate theme + Emerald accent)
 - **Auth:** Clerk
-- **Backend:** n8n webhooks (AI/data processing)
-- **Styling:** Tailwind CSS v4 with dark mode support
-- **State Management:** React Context API
+- **Backend:** n8n webhooks (AI processing, data storage, credit management)
+- **State Management:** React Context API (`DashboardDataProvider`)
+- **Dark Mode:** next-themes (system-aware + manual toggle)
 
 ## Project Structure
 
@@ -49,29 +44,29 @@ src/
 ├── app/
 │   ├── (marketing)/          # Public marketing pages
 │   │   ├── page.tsx          # Landing page
-│   │   └── layout.tsx
+│   │   ├── about/            # About page
+│   │   ├── privacy/          # Privacy policy
+│   │   └── terms/            # Terms of service
 │   ├── (dashboard)/          # Protected dashboard pages
 │   │   ├── dashboard/
 │   │   │   ├── page.tsx      # Overview
-│   │   │   ├── match/        # Job Fit Analysis
-│   │   │   ├── screen/       # Resume Screening
-│   │   │   ├── history/      # Past analyses
+│   │   │   ├── documents/    # Document management
+│   │   │   ├── chat/         # AI chat interface
 │   │   │   └── settings/     # User settings & credits
 │   │   └── layout.tsx        # Dashboard shell with DashboardDataProvider
 │   ├── api/
-│   │   ├── resume/           # Resume upload, list, delete
-│   │   ├── jd/               # Job description submit
-│   │   ├── match/            # Match analysis & history
-│   │   ├── analytics/        # User analytics
-│   │   ├── credits/          # Credit balance & history
+│   │   ├── documents/        # Upload, list, delete
+│   │   ├── chat/             # Message, title, history
+│   │   ├── analytics/        # User statistics
+│   │   ├── credits/          # Balance & history
+│   │   ├── contact/          # Contact form
 │   │   └── webhooks/         # Clerk webhook handler
 │   └── layout.tsx            # Root layout with Clerk & theme providers
 ├── components/
 │   ├── dashboard/
-│   │   ├── match/            # Match workflow components
-│   │   ├── screen/           # Screening workflow components
-│   │   ├── history/          # History & details components
-│   │   ├── settings/         # Settings components
+│   │   ├── documents/        # Upload + list components
+│   │   ├── chat/             # Sidebar, messages, input
+│   │   ├── settings/         # Credits section
 │   │   ├── sidebar.tsx
 │   │   ├── top-nav.tsx
 │   │   └── credit-display.tsx
@@ -79,17 +74,16 @@ src/
 │   ├── ui/                   # shadcn/ui primitives
 │   └── theme-provider.tsx    # next-themes wrapper
 ├── contexts/
-│   └── dashboard-data.tsx    # DashboardDataProvider context (caches analytics, matches, credits)
+│   └── dashboard-data.tsx    # DashboardDataProvider context
 ├── lib/
-│   ├── n8n.ts                # n8n webhook client
-│   ├── n8n-main.ts           # Resume processing, JD scraping, matching
-│   ├── n8n-analytics.ts      # User analytics
-│   ├── n8n-credits.ts        # Credit management
-│   ├── n8n-data.ts           # Data retrieval (resumes, JDs, matches)
-│   ├── n8n-delete.ts         # Data deletion
-│   └── refresh-credits.ts    # Legacy credit refresh (kept for reference)
+│   ├── n8n.ts                # n8n webhook client (JSON + multipart)
+│   ├── n8n-documents.ts      # uploadDocument, chatWithDocument, generateTitle
+│   ├── n8n-analytics.ts      # getUserAnalytics
+│   ├── n8n-credits.ts        # signupCredits, getRemainingCredits, getCreditHistory
+│   ├── n8n-data.ts           # getUserDocuments, getChatHistory
+│   └── n8n-delete.ts         # deleteDocuments
 ├── types/
-│   └── n8n.ts                # TypeScript types for n8n responses
+│   └── n8n.ts                # TypeScript types for all n8n responses
 └── middleware.ts             # Clerk auth middleware
 ```
 
@@ -98,39 +92,42 @@ src/
 ### Data Flow
 
 ```
-User Action (Match/Screen) → API Route → n8n Webhook → Claude AI
+User Action → API Route → n8n Webhook → Claude AI
     ↓
 n8n processes & stores data
     ↓
 API returns result
     ↓
 UI updates via DashboardDataProvider context
-    ↓
-Dashboard automatically refreshes (Overview, History, Credits)
 ```
 
 ### DashboardDataProvider Context
 
-- **Fetches once** on dashboard mount: analytics, matches, credit balance & history
-- **refreshAll()** — called after Job Fit Analysis or Resume Screening completes
-- **refreshCredits()** — called after credit-consuming actions (resume upload)
-- Syncs all dashboard pages automatically (no redundant API calls)
+- **Fetches once** on dashboard mount: analytics, documents, chat sessions, credit balance & history
+- **refreshDocuments()** — called after upload or delete
+- **refreshChatSessions()** — called after new messages
+- **refreshCredits()** — called after any credit-consuming action
+- **refreshAll()** — full refresh after major actions
+
+### Chat Session Design
+
+Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the session record on the first message — no separate "create session" API call required.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ (LTS recommended)
-- npm or yarn
+- npm
 - Clerk account (free tier)
-- n8n instance with configured webhooks
+- n8n instance with 8 configured webhook workflows
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mzeeshanaltaf/resume-match-ai.git
-   cd resume-match-ai
+   git clone <repo-url>
+   cd docgenie
    ```
 
 2. **Install dependencies**
@@ -143,21 +140,24 @@ Dashboard automatically refreshes (Overview, History, Credits)
    cp .env.example .env.local
    ```
 
-   Add your Clerk and n8n credentials:
+   Fill in your credentials:
    ```env
    # Clerk (get from https://dashboard.clerk.com)
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
    CLERK_SECRET_KEY=sk_test_...
    CLERK_WEBHOOK_SECRET=whsec_...
 
-   # n8n (webhook base URL + webhook IDs)
+   # n8n
    N8N_WEBHOOK_BASE_URL=https://your-n8n-instance.com/webhook
    N8N_API_KEY=your_n8n_api_key
-   N8N_MAIN_WEBHOOK_ID=...
+   N8N_INGESTION_WEBHOOK_ID=...
+   N8N_AI_ASSISTANT_WEBHOOK_ID=...
+   N8N_TITLE_GENERATOR_WEBHOOK_ID=...
    N8N_ANALYTICS_WEBHOOK_ID=...
    N8N_CREDITS_WEBHOOK_ID=...
    N8N_DATA_WEBHOOK_ID=...
    N8N_DELETE_WEBHOOK_ID=...
+   N8N_CONTACT_FORM_WEBHOOK_ID=...
    ```
 
 4. **Start development server**
@@ -165,7 +165,7 @@ Dashboard automatically refreshes (Overview, History, Credits)
    npm run dev
    ```
 
-   Access at `http://127.0.0.1:3000`
+   Access at `http://localhost:3000`
 
 ### Build
 
@@ -176,103 +176,82 @@ npm start
 
 ## API Endpoints
 
-### Resume Management
-- `POST /api/resume/upload` — Upload and process a resume
-- `GET /api/resume/list` — List all user's resumes
-- `DELETE /api/resume/[id]` — Delete a resume
+### Document Management
+- `POST /api/documents/upload` — Upload and process a document (multipart, max 5MB, PDF/DOCX/TXT/CSV)
+- `GET /api/documents/list` — List all user's documents
+- `DELETE /api/documents/delete` — Delete documents by file IDs
 
-### Job Description
-- `POST /api/jd/submit` — Submit and process a job description (URL or text)
-- `GET /api/jd/list` — List all user's job descriptions
-- `DELETE /api/jd/[id]` — Delete a job description
-
-### Matching & Screening
-- `POST /api/match/run` — Run resume-to-JD matching analysis
-- `GET /api/match/history` — Get all past analyses
-- `DELETE /api/match/[id]` — Delete an analysis
+### Chat
+- `POST /api/chat/message` — Send a message, receive AI response
+- `POST /api/chat/title` — Generate a title for a chat session
+- `GET /api/chat/history` — Get all chat sessions with messages
 
 ### Analytics & Credits
-- `GET /api/analytics` — User statistics (resumes, JDs, matches processed)
-- `GET /api/credits/balance` — Current credit balance
+- `GET /api/analytics` — User statistics (documents processed, balances)
+- `GET /api/credits/balance` — Current credit + message balance
 - `GET /api/credits/history` — Transaction history
+
+### Other
+- `POST /api/contact` — Contact form submission
+- `POST /api/webhooks/clerk` — Clerk user lifecycle events (issues signup credits)
 
 ## n8n Webhook Contract
 
 All webhooks accept `POST` requests with:
 - Header: `x-api-key: {N8N_API_KEY}`
-- Body: JSON with `event_type` field routing to n8n switch nodes
+- Body: JSON with optional `event_type` field for n8n switch nodes
 
-### Webhook Summary
+| Webhook | Env Var | Purpose |
+|---------|---------|---------|
+| **Ingestion** | `N8N_INGESTION_WEBHOOK_ID` | Process uploaded documents |
+| **AI Assistant** | `N8N_AI_ASSISTANT_WEBHOOK_ID` | Chat Q&A responses |
+| **Title Generator** | `N8N_TITLE_GENERATOR_WEBHOOK_ID` | Auto-generate session titles |
+| **Analytics** | `N8N_ANALYTICS_WEBHOOK_ID` | User usage statistics |
+| **Credits** | `N8N_CREDITS_WEBHOOK_ID` | Credit & message balance management |
+| **Data** | `N8N_DATA_WEBHOOK_ID` | Retrieve documents & chat history |
+| **Delete** | `N8N_DELETE_WEBHOOK_ID` | Delete documents |
+| **Contact** | `N8N_CONTACT_FORM_WEBHOOK_ID` | Contact form handler |
 
-| Workflow | Purpose | Event Types |
-|----------|---------|------------|
-| **Main** | Resume processing, JD scraping, matching | `process_resume`, `scrape_jd`, `resume_match` |
-| **Analytics** | User statistics | `user_analytics` |
-| **Credits** | Credit balance & transactions | `signup_credits`, `get_remaining_credit`, `credit_history` |
-| **Data** | Retrieve stored data | `get_resume`, `get_jds`, `get_job_match_summary` |
-| **Delete** | Delete data | `delete_resume`, `delete_jd`, `delete_job_match_summary` |
+## Supported File Types
 
-## Key Features Explained
+| Type | Extension | Notes |
+|------|-----------|-------|
+| PDF | `.pdf` | Most common; full text extraction |
+| Word | `.docx` | Microsoft Word documents |
+| Text | `.txt` | Plain text files |
+| CSV | `.csv` | Spreadsheet data |
 
-### Job Fit Analysis Workflow
-1. **Step 1:** Select or upload your resume
-2. **Step 2:** Enter job description (URL or paste text)
-3. **Step 3:** Process JD and analyze match
-4. **Step 4:** View results with score, strengths, gaps, and recommendations
-
-### Resume Screening Workflow
-1. **Step 1:** Upload multiple candidate resumes
-2. **Step 2:** Enter job posting URL
-3. **Step 3:** Click "Start Screening" to analyze all resumes
-4. **Step 4:** View ranked results, sorted by match score
-
-### Dashboard Overview
-- **Stats cards:** Total resumes, JDs, and matches processed
-- **Recent analyses:** 5 most recent screening results
-- **Quick actions:** Link to start new analysis
-
-### History Page
-- **Sortable table:** Search, filter, and sort by score or date
-- **Tab switcher:** View Job Fit analyses or Resume Screenings separately
-- **Detail modal:** Click to view full analysis report
-- **Bulk delete:** Remove analyses from history
-
-### Settings Page
-- **Profile tab:** Edit account information (via Clerk)
-- **Credits tab:** View balance and transaction history
-- **Account tab:** Danger zone (future features)
-
-## Performance Optimizations
-
-- **Context-based caching:** Analytics, matches, and credits fetched once per session
-- **Selective refreshing:** Only relevant data updates after workflows
-- **Server Components:** Used for data fetching (layout, pages)
-- **Client Components:** Used for interactivity (forms, uploads, dialogs)
-- **Image optimization:** Next.js Image component for hero visuals
-- **Code splitting:** Dynamic imports for heavy components
-- **Dark mode:** CSS variables + next-themes (no layout shift)
+Maximum file size: **5MB per document**
 
 ## Styling & Theme
 
-- **Color scheme:** Emerald green (#10b981) accent on slate theme
-- **Dark mode:** System-aware with manual toggle
-- **Typography:** DM Serif Display (display) + system fonts (body)
-- **Components:** shadcn/ui with custom tailored styling
-- **Animations:** CSS transitions + Lucide React icons
+- **Color scheme:** Emerald green accent on slate base
+- **Dark mode:** System-aware with manual toggle (next-themes)
+- **Typography:** Display font for headings, system font for body
+- **Components:** shadcn/ui with custom styling
+- **Animations:** CSS transitions + Tailwind v4
 
-## Testing
+## Troubleshooting
 
-Run the development server and test the flows:
+### Document upload fails
+- Check file type is PDF, DOCX, TXT, or CSV
+- Verify file is under 5MB
+- Check `N8N_INGESTION_WEBHOOK_ID` is correct in `.env.local`
+- Inspect Network tab for API error details
 
-```bash
-npm run dev
-```
+### Chat not responding
+- Verify `N8N_AI_ASSISTANT_WEBHOOK_ID` is correct
+- Check n8n instance is running and workflow is active
+- Ensure message credits > 0
 
-1. **Job Fit Analysis:** Upload resume → enter job URL → view match score
-2. **Resume Screening:** Upload 2+ resumes → enter job URL → screen all → ranked results
-3. **History:** Navigate to History, search/filter, view details, delete entries
-4. **Credits:** Check Settings → Credits, confirm balance updates after workflows
-5. **Dark mode:** Click theme toggle in navbar, verify both themes work
+### Credits not updating
+- Check `N8N_CREDITS_WEBHOOK_ID` is correct
+- Review n8n workflow logs for errors
+- Hard refresh browser (Ctrl+Shift+R)
+
+### Dark mode not persisting
+- Verify `suppressHydrationWarning` is on `<html>` in root layout
+- Check `next-themes` provider wraps the app in layout.tsx
 
 ## Deployment
 
@@ -283,7 +262,12 @@ git push origin main
 # Vercel auto-deploys on push to main
 ```
 
-Add environment variables in Vercel dashboard → Settings → Environment Variables
+Add all environment variables in Vercel Dashboard → Settings → Environment Variables.
+
+Configure Clerk webhook URL to point to your deployed domain:
+```
+https://your-domain.com/api/webhooks/clerk
+```
 
 ### Self-hosted
 
@@ -292,70 +276,6 @@ npm run build
 npm start
 ```
 
-Ensure all environment variables are set in your deployment platform.
-
-## Troubleshooting
-
-### "Failed to process job description"
-- Verify n8n webhook URL is accessible
-- Check `N8N_API_KEY` is correct
-- Ensure job URL is valid and publicly accessible
-
-### Credits not updating
-- Check credit webhook response in n8n logs
-- Verify `N8N_CREDITS_WEBHOOK_ID` is correct
-- Clear browser cache and reload
-
-### Dark mode not persisting
-- Check if `suppressHydrationWarning` is on `<html>` tag
-- Verify `next-themes` is installed and provider is in root layout
-
-### Resume upload fails
-- PDF file only (max 10 MB)
-- Check network tab for API errors
-- Verify `N8N_MAIN_WEBHOOK_ID` is correct
-
-## Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## License
 
 This project is proprietary. All rights reserved.
-
-## Support
-
-For issues, questions, or feature requests:
-- Open a GitHub issue
-- Contact: support@resumematchai.app
-- Documentation: [Help & Support](https://resumematchai.app/help)
-
-## Roadmap
-
-- [ ] Cover letter generation
-- [ ] Salary insights based on job description
-- [ ] Interview question preparation
-- [ ] Email integration for job alerts
-- [ ] API for third-party integrations
-- [ ] Team/enterprise features
-- [ ] Mobile app (iOS/Android)
-
-## Changelog
-
-### v1.0.0 (Current)
-- ✅ Job Fit Analysis with detailed scoring
-- ✅ Resume Screening for recruiters
-- ✅ Smart Dashboard with analytics
-- ✅ Credit system and usage tracking
-- ✅ Dark mode support
-- ✅ Full mobile responsiveness
-- ✅ Context-based data caching
-
----
-
-Built with ❤️ using Next.js, Claude AI, and n8n

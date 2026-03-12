@@ -4,29 +4,29 @@ import { Footer } from "@/components/marketing/footer";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "ResuMatchAI Terms of Service — the rules governing your use of our platform.",
+  description: "DocGenie Terms of Service — the rules governing your use of our platform.",
 };
 
 const sections = [
   {
     title: "1. Acceptance of terms",
     body: [
-      "By accessing or using ResuMatchAI (the \"Service\"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.",
+      "By accessing or using DocGenie (the \"Service\"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.",
       "We reserve the right to modify these terms at any time. Continued use of the Service after changes are posted constitutes your acceptance of the revised terms.",
     ],
   },
   {
     title: "2. Description of service",
     body: [
-      "ResuMatchAI provides AI-powered resume analysis and job description matching. The Service generates match scores, keyword gap analysis, and tailored recommendations based on content you submit.",
-      "The Service is provided on an \"as is\" and \"as available\" basis. We do not guarantee that any analysis result will lead to employment outcomes.",
+      "DocGenie provides AI-powered document Q&A. The Service allows you to upload documents and ask questions, receiving AI-generated answers sourced from your document content.",
+      "The Service is provided on an \"as is\" and \"as available\" basis. We do not guarantee the accuracy of AI-generated answers.",
     ],
   },
   {
     title: "3. Accounts and credits",
     body: [
       "You must create an account to access the full Service. You are responsible for maintaining the confidentiality of your account credentials.",
-      "The Service operates on a credit system. Free accounts receive 5 credits per month. Credits are consumed when you run a resume analysis. Credits are non-transferable and unused credits do not roll over.",
+      "The Service operates on a credit system. Free accounts receive 5 document credits and 25 message credits. Document credits are consumed when you upload a document, and message credits are consumed when you send a chat message. Credits are non-transferable.",
       "We reserve the right to modify the credit system, pricing, and feature availability at any time with reasonable notice.",
     ],
   },
@@ -41,14 +41,14 @@ const sections = [
   {
     title: "5. Your content",
     body: [
-      "You retain ownership of any resume, job description, or other content you submit to the Service. By submitting content, you grant us a limited, non-exclusive licence to process that content solely for the purpose of delivering the Service.",
+      "You retain ownership of any documents or other content you submit to the Service. By submitting content, you grant us a limited, non-exclusive licence to process that content solely for the purpose of delivering the Service.",
       "You represent that you have the right to submit any content you provide, and that doing so does not violate any third-party rights.",
     ],
   },
   {
     title: "6. Intellectual property",
     body: [
-      "The Service, including its software, design, and AI models, is owned by ResuMatchAI and protected by applicable intellectual property laws.",
+      "The Service, including its software, design, and AI models, is owned by DocGenie and protected by applicable intellectual property laws.",
       "You may not copy, modify, distribute, or create derivative works from any part of the Service without our prior written consent.",
     ],
   },
@@ -56,13 +56,13 @@ const sections = [
     title: "7. Disclaimer of warranties",
     body: [
       "The Service is provided without warranties of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement.",
-      "We do not warrant that match scores or recommendations will improve your job search outcomes. Employment decisions are made by third parties over whom we have no control.",
+      "We do not warrant that AI-generated answers will be accurate or complete. You should verify important information from original sources.",
     ],
   },
   {
     title: "8. Limitation of liability",
     body: [
-      "To the fullest extent permitted by law, ResuMatchAI shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of, or inability to use, the Service.",
+      "To the fullest extent permitted by law, DocGenie shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of, or inability to use, the Service.",
       "Our total liability to you for any claim arising from these Terms or your use of the Service shall not exceed the amount you paid to us in the 12 months preceding the claim.",
     ],
   },
@@ -103,7 +103,7 @@ export default function TermsPage() {
               Last updated: 9 March 2026
             </p>
             <p className="mt-4 leading-relaxed text-muted-foreground">
-              Please read these Terms of Service carefully before using ResuMatchAI. By using the
+              Please read these Terms of Service carefully before using DocGenie. By using the
               Service, you agree to be bound by these terms.
             </p>
           </div>

@@ -7,13 +7,10 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const raw = await getRemainingCredits(userId);
+  const data = await getRemainingCredits(userId);
 
-  // Normalize: n8n may return an array instead of a plain object
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = Array.isArray(raw) ? (raw as any[])[0] : raw;
-  const balance =
-    typeof data?.current_balance === "number" ? data.current_balance : 0;
-
-  return Response.json({ current_balance: balance });
+  return Response.json({
+    credit_balance: data.credit_balance,
+    message_balance: data.message_balance,
+  });
 }

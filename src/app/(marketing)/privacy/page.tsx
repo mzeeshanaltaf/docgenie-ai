@@ -4,7 +4,7 @@ import { Footer } from "@/components/marketing/footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "ResuMatchAI Privacy Policy — how we collect, use, and protect your data.",
+  description: "DocGenie Privacy Policy — how we collect, use, and protect your data.",
 };
 
 const sections = [
@@ -12,14 +12,14 @@ const sections = [
     title: "1. Information we collect",
     body: [
       "When you create an account, we collect your name and email address via our authentication provider (Clerk). We do not store your password directly.",
-      "When you use our resume matching features, your uploaded resume is temporarily processed by our AI pipeline to generate a match report. Resume content is not stored permanently on our servers.",
+      "When you use our document Q&A features, your uploaded documents are processed by our AI pipeline to enable question answering. Document content is indexed for retrieval during your session.",
       "We collect standard usage data such as pages visited, features used, and error logs to improve the service. This data is aggregated and not linked to personally identifiable information.",
     ],
   },
   {
     title: "2. How we use your information",
     body: [
-      "To provide and improve the ResuMatchAI service, including generating match reports and recommendations.",
+      "To provide and improve the DocGenie service, including processing documents and generating AI-powered answers to your questions.",
       "To manage your account, process credits, and send transactional emails (e.g. password resets, billing notifications).",
       "To analyse usage patterns in aggregate to inform product decisions. We do not sell your personal data to third parties.",
     ],
@@ -28,15 +28,15 @@ const sections = [
     title: "3. Data retention",
     body: [
       "Account data (name, email) is retained for as long as your account is active. You may request deletion at any time by contacting us.",
-      "Resume files submitted for analysis are processed in memory and are not persisted beyond the duration of a single analysis session.",
-      "Match history and analytics stored in your dashboard are retained indefinitely while your account is active, and deleted within 30 days of account closure.",
+      "Uploaded documents are processed and indexed to enable AI-powered Q&A. Document data is retained while your account is active.",
+      "Chat history and analytics stored in your dashboard are retained while your account is active, and deleted within 30 days of account closure.",
     ],
   },
   {
     title: "4. Third-party services",
     body: [
       "We use Clerk for authentication and identity management. Clerk's privacy policy applies to data processed through their platform.",
-      "Our AI processing pipeline is powered by n8n workflows running on infrastructure we control. No resume data is shared with external AI providers without your knowledge.",
+      "Our AI processing pipeline is powered by n8n workflows running on infrastructure we control. No document data is shared with external AI providers without your knowledge.",
       "We do not use third-party advertising networks or tracking pixels.",
     ],
   },
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
               Last updated: 9 March 2026
             </p>
             <p className="mt-4 leading-relaxed text-muted-foreground">
-              ResuMatchAI (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to
+              DocGenie (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to
               protecting your privacy. This policy explains what data we collect, how we use it,
               and your rights in relation to it.
             </p>

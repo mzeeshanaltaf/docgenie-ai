@@ -18,7 +18,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="credits">Credits</TabsTrigger>
+          <TabsTrigger value="credits">Credits & Messages</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 

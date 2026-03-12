@@ -11,25 +11,25 @@ const geist = Geist({
 
 export const metadata: Metadata = {
   title: {
-    default: "ResuMatchAI — Match Your Resume to Any Job",
-    template: "%s | ResuMatchAI",
+    default: "DocGenie — Chat With Your Documents",
+    template: "%s | DocGenie",
   },
   description:
-    "AI-powered resume analysis and job matching. Upload your resume, paste a job description, and get an instant match score with personalised recommendations.",
-  metadataBase: new URL("https://resumatch.zeeshanai.cloud"),
+    "Upload PDFs, Word docs, text files, or spreadsheets and chat with them using AI. Get instant answers from your documents.",
+  metadataBase: new URL("https://docgenie.zeeshanai.cloud"),
   openGraph: {
     type: "website",
-    url: "https://resumatch.zeeshanai.cloud",
-    title: "ResuMatchAI — Match Your Resume to Any Job",
+    url: "https://docgenie.zeeshanai.cloud",
+    title: "DocGenie — Chat With Your Documents",
     description:
-      "AI-powered resume analysis and job matching. Get an instant match score and tailored recommendations to land your next role.",
-    siteName: "ResuMatchAI",
+      "Upload documents and ask questions. DocGenie reads, understands, and answers instantly using AI.",
+    siteName: "DocGenie",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ResuMatchAI — Match Your Resume to Any Job",
+    title: "DocGenie — Chat With Your Documents",
     description:
-      "AI-powered resume analysis and job matching. Get an instant match score and tailored recommendations.",
+      "Upload documents and ask questions. DocGenie reads, understands, and answers instantly using AI.",
   },
   robots: {
     index: true,

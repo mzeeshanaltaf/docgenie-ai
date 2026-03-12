@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { FileText } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -18,9 +18,9 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/10">
-            <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <span className="font-semibold tracking-tight">ResuMatchAI</span>
+          <span className="font-semibold tracking-tight">DocGenie</span>
         </Link>
 
         {/* Nav links */}

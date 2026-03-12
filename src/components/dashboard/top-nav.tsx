@@ -11,9 +11,8 @@ import { Sidebar } from "./sidebar";
 
 const breadcrumbMap: Record<string, string> = {
   "/dashboard": "Overview",
-  "/dashboard/match": "Job Fit",
-  "/dashboard/screen": "Resume Screener",
-  "/dashboard/history": "History",
+  "/dashboard/documents": "Documents",
+  "/dashboard/chat": "Chat",
   "/dashboard/settings": "Settings",
 };
 
