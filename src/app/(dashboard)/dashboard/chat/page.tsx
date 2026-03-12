@@ -117,10 +117,9 @@ export default function ChatPage() {
         return;
       }
 
-      // Read the streaming response
+      // Read the streaming response (n8n sends newline-delimited JSON objects)
       const reader = res.body?.getReader();
       if (!reader) {
-        // Fallback: non-streaming response
         const text = await res.text();
         setStreamingContent(undefined);
         setLocalMessages((prev) => [
@@ -129,22 +128,74 @@ export default function ChatPage() {
         ]);
       } else {
         const decoder = new TextDecoder();
-        let accumulated = "";
+        let buffer = "";
+        let streamedText = "";
+        let finalOutput = "";
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          accumulated += chunk;
-          setStreamingContent(accumulated);
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete JSON objects separated by newlines
+          const lines = buffer.split("\n");
+          // Keep the last (potentially incomplete) line in the buffer
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              const event = JSON.parse(trimmed);
+              if (event.type === "item" && event.content) {
+                if (event.metadata?.nodeName === "Respond to Webhook") {
+                  // Final response JSON — extract the output field
+                  try {
+                    const parsed = JSON.parse(event.content);
+                    if (parsed.output) finalOutput = parsed.output;
+                  } catch {
+                    // Not JSON, ignore
+                  }
+                } else {
+                  // AI token chunk
+                  streamedText += event.content;
+                  setStreamingContent(streamedText);
+                }
+              }
+            } catch {
+              // Incomplete or invalid JSON, skip
+            }
+          }
         }
 
-        // Stream finished — move streaming content into final messages
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          try {
+            const event = JSON.parse(buffer.trim());
+            if (event.type === "item" && event.content) {
+              if (event.metadata?.nodeName === "Respond to Webhook") {
+                try {
+                  const parsed = JSON.parse(event.content);
+                  if (parsed.output) finalOutput = parsed.output;
+                } catch {
+                  // Not JSON
+                }
+              } else {
+                streamedText += event.content;
+              }
+            }
+          } catch {
+            // Incomplete JSON
+          }
+        }
+
+        // Use the final webhook output if available, otherwise the streamed text
+        const content = finalOutput || streamedText || "No response";
         setStreamingContent(undefined);
         setLocalMessages((prev) => [
           ...prev,
-          { role: "assistant", content: accumulated || "No response" },
+          { role: "assistant", content },
         ]);
       }
 
