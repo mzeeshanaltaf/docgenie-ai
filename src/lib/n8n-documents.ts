@@ -1,4 +1,4 @@
-import { callN8nWebhook, callN8nWebhookMultipart } from "./n8n";
+import { callN8nWebhook, callN8nWebhookMultipart, callN8nWebhookStream } from "./n8n";
 import type {
   IngestionResponse,
   ChatResponseItem,
@@ -26,6 +26,18 @@ export function chatWithDocument(
   sessionId: string
 ): Promise<ChatResponseItem[]> {
   return callN8nWebhook<ChatResponseItem[]>(AI_ASSISTANT_WEBHOOK_ID, {
+    user_query: userQuery,
+    user_id: userId,
+    session_id: sessionId,
+  });
+}
+
+export function chatWithDocumentStream(
+  userQuery: string,
+  userId: string,
+  sessionId: string
+): Promise<Response> {
+  return callN8nWebhookStream(AI_ASSISTANT_WEBHOOK_ID, {
     user_query: userQuery,
     user_id: userId,
     session_id: sessionId,

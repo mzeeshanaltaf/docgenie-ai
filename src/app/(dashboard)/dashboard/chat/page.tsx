@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useDashboardData } from "@/contexts/dashboard-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatSidebar } from "@/components/dashboard/chat/chat-sidebar";
@@ -19,9 +19,13 @@ export default function ChatPage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string | undefined>(
+    undefined
+  );
   const [sessionTitles, setSessionTitles] = useState<Record<string, string>>(
     {}
   );
+  const abortRef = useRef<AbortController | null>(null);
 
   // Load messages when switching sessions
   useEffect(() => {
@@ -78,40 +82,71 @@ export default function ChatPage() {
     sessionId: string,
     isFirstMessage: boolean
   ) => {
-    // Optimistic update
+    // Optimistic update — add user message
     setLocalMessages((prev) => [
       ...prev,
       { role: "user", content: message },
     ]);
     setIsLoading(true);
+    setStreamingContent("");
+
+    // Abort any previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const res = await fetch("/api/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: message, session_id: sessionId }),
+        signal: controller.signal,
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        const errorMessage =
-          data.message || data.error || "Failed to get response";
+        let errorMessage = "Failed to get response";
+        try {
+          const errData = await res.json();
+          errorMessage = errData.message || errData.error || errorMessage;
+        } catch {
+          // body might not be JSON
+        }
         toast.error(errorMessage);
-        // Remove the optimistic user message
         setLocalMessages((prev) => prev.slice(0, -1));
+        setStreamingContent(undefined);
         return;
       }
 
-      // Response is an array: [{ output: "..." }]
-      const aiResponse = Array.isArray(data)
-        ? data[0]?.output ?? "No response"
-        : data.output ?? "No response";
+      // Read the streaming response
+      const reader = res.body?.getReader();
+      if (!reader) {
+        // Fallback: non-streaming response
+        const text = await res.text();
+        setStreamingContent(undefined);
+        setLocalMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: text || "No response" },
+        ]);
+      } else {
+        const decoder = new TextDecoder();
+        let accumulated = "";
 
-      setLocalMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: aiResponse },
-      ]);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          accumulated += chunk;
+          setStreamingContent(accumulated);
+        }
+
+        // Stream finished — move streaming content into final messages
+        setStreamingContent(undefined);
+        setLocalMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: accumulated || "No response" },
+        ]);
+      }
 
       // Fire-and-forget: generate title for first message
       if (isFirstMessage) {
@@ -139,9 +174,11 @@ export default function ChatPage() {
       }
 
       refreshAll();
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       toast.error("Failed to send message");
       setLocalMessages((prev) => prev.slice(0, -1));
+      setStreamingContent(undefined);
     } finally {
       setIsLoading(false);
     }
@@ -198,8 +235,12 @@ export default function ChatPage() {
       </div>
 
       {/* Chat area */}
-      <div className="flex flex-1 flex-col">
-        <ChatMessages messages={localMessages} isLoading={isLoading} />
+      <div className="flex flex-1 flex-col min-h-0">
+        <ChatMessages
+          messages={localMessages}
+          isLoading={isLoading}
+          streamingContent={streamingContent}
+        />
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { chatWithDocument } from "@/lib/n8n-documents";
+import { chatWithDocumentStream } from "@/lib/n8n-documents";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -17,8 +17,15 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await chatWithDocument(query, userId, session_id);
-    return Response.json(result);
+    const n8nRes = await chatWithDocumentStream(query, userId, session_id);
+
+    // Pass the n8n stream directly to the client
+    return new Response(n8nRes.body, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+      },
+    });
   } catch (err) {
     console.error("Chat message error:", err);
     return Response.json({ error: "Chat failed" }, { status: 500 });

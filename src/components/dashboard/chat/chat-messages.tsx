@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { BookOpen, User, Loader2, Copy, Check } from "lucide-react";
 
 interface Message {
@@ -12,10 +11,10 @@ interface Message {
 interface ChatMessagesProps {
   messages: Message[];
   isLoading: boolean;
+  streamingContent?: string;
 }
 
 function normalizeContent(text: string): string {
-  // Replace literal \n (two chars: backslash + n) with actual newlines
   return text.replace(/\\n/g, "\n");
 }
 
@@ -43,12 +42,17 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
+export function ChatMessages({
+  messages,
+  isLoading,
+  streamingContent,
+}: ChatMessagesProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingContent]);
 
   if (messages.length === 0 && !isLoading) {
     return (
@@ -63,8 +67,10 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
     );
   }
 
+  const isStreaming = typeof streamingContent === "string";
+
   return (
-    <ScrollArea className="flex-1">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
         {messages.map((msg, i) => {
           const content = normalizeContent(msg.content);
@@ -99,7 +105,23 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
           );
         })}
 
-        {isLoading && (
+        {/* Streaming assistant message */}
+        {isStreaming && (
+          <div className="group flex gap-3 justify-start">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+              <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="relative max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
+              <p className="whitespace-pre-wrap">
+                {normalizeContent(streamingContent)}
+                <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Waiting spinner (before stream starts) */}
+        {isLoading && !isStreaming && (
           <div className="flex gap-3">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
               <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -112,6 +134,6 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
 
         <div ref={bottomRef} />
       </div>
-    </ScrollArea>
+    </div>
   );
 }

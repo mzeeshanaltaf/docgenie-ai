@@ -58,6 +58,45 @@ export async function callN8nWebhook<TResponse = unknown>(
 }
 
 /**
+ * Call an n8n webhook and return the raw Response for streaming.
+ *
+ * @param webhookId - The webhook UUID
+ * @param payload   - JSON body to send
+ * @returns Raw Response (caller is responsible for reading the stream)
+ */
+export async function callN8nWebhookStream(
+  webhookId: string,
+  payload: Record<string, unknown>
+): Promise<Response> {
+  if (!N8N_BASE_URL) {
+    throw new N8nError("N8N_WEBHOOK_BASE_URL environment variable is not set.");
+  }
+  if (!N8N_API_KEY) {
+    throw new N8nError("N8N_API_KEY environment variable is not set.");
+  }
+
+  const url = `${N8N_BASE_URL.replace(/\/$/, "")}/${webhookId}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": N8N_API_KEY,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new N8nError(
+      `n8n webhook call failed: ${response.statusText}`,
+      response.status
+    );
+  }
+
+  return response;
+}
+
+/**
  * Call an n8n webhook endpoint with a multipart/form-data payload (file upload).
  * Do NOT set Content-Type — fetch will auto-set the multipart boundary.
  *
