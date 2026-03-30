@@ -29,9 +29,23 @@ export function ContactDialog({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [captchaA, setCaptchaA] = useState(0);
+  const [captchaB, setCaptchaB] = useState(0);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+
+  function generateCaptcha() {
+    setCaptchaA(Math.floor(Math.random() * 20) + 1);
+    setCaptchaB(Math.floor(Math.random() * 20) + 1);
+    setCaptchaAnswer("");
+  }
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (Number(captchaAnswer) !== captchaA + captchaB) {
+      toast.error("Incorrect answer. Please try again.");
+      generateCaptcha();
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/contact", {
@@ -50,12 +64,15 @@ export function ContactDialog({
 
   function handleOpenChange(val: boolean) {
     setOpen(val);
-    if (!val) {
+    if (val) {
+      generateCaptcha();
+    } else {
       setTimeout(() => {
         setSubmitted(false);
         setName("");
         setEmail("");
         setMessage("");
+        setCaptchaAnswer("");
       }, 300);
     }
   }
@@ -63,7 +80,7 @@ export function ContactDialog({
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => { generateCaptcha(); setOpen(true); }}
         className={triggerClassName}
       >
         {triggerLabel}
@@ -158,6 +175,22 @@ export function ContactDialog({
                     required
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="contact-captcha"
+                    className="text-sm font-medium"
+                  >
+                    What is {captchaA} + {captchaB}?
+                  </label>
+                  <Input
+                    id="contact-captcha"
+                    type="number"
+                    value={captchaAnswer}
+                    onChange={(e) => setCaptchaAnswer(e.target.value)}
+                    placeholder="Your answer"
+                    required
+                  />
+                </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <Button
                     type="button"
@@ -168,7 +201,7 @@ export function ContactDialog({
                   </Button>
                   <Button
                     type="submit"
-                    disabled={loading || !name.trim() || !email.trim() || !message.trim()}
+                    disabled={loading || !name.trim() || !email.trim() || !message.trim() || !captchaAnswer.trim()}
                     className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
                   >
                     {loading ? "Sending…" : "Send Message"}

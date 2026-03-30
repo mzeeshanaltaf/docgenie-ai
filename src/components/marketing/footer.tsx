@@ -10,7 +10,6 @@ const links = {
   ],
   Company: [
     ["About", "/about"],
-    ["Blog", "#"],
   ],
   Legal: [
     ["Privacy", "/privacy"],
