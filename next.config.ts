@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
   // Hides the Next.js dev-tools indicator (the N logo in the bottom-left corner)
   devIndicators: false,
 
+  webpack: (config) => {
+    // Required by react-pdf / pdfjs-dist in Next.js
+    config.resolve.alias.canvas = false;
+    return config;
+  },
+
   async headers() {
     return [
       {

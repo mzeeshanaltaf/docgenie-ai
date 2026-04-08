@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useDashboardData } from "@/contexts/dashboard-data";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,19 @@ import {
 import { toast } from "sonner";
 import type { DocumentRecord } from "@/types/n8n";
 
+// Lazy-load the PDF viewer to avoid SSR issues with pdfjs-dist
+const PdfViewer = dynamic(
+  () => import("./pdf-viewer").then((m) => ({ default: m.PdfViewer })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-40 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  }
+);
+
 function getFileIcon(mimeType: string) {
   if (mimeType === "text/csv") return FileSpreadsheet;
   if (mimeType === "application/pdf" || mimeType.includes("word"))
@@ -38,42 +52,6 @@ function formatFileSize(bytes: string | number) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function base64ToBlob(base64: string, mimeType: string): Blob {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mimeType });
-}
-
-function PdfPreview({ base64, fileName }: { base64: string; fileName: string }) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const blob = base64ToBlob(base64, "application/pdf");
-    const url = URL.createObjectURL(blob);
-    setBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [base64]);
-
-  if (!blobUrl) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <embed
-      src={blobUrl}
-      type="application/pdf"
-      className="w-full h-[60vh] rounded border border-border"
-    />
-  );
-}
-
 function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   const { mime_type, file_base64, file_name } = doc;
 
@@ -86,7 +64,7 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   }
 
   if (mime_type === "application/pdf") {
-    return <PdfPreview base64={file_base64} fileName={file_name} />;
+    return <PdfViewer base64={file_base64} />;
   }
 
   if (mime_type === "text/csv" || mime_type === "text/plain") {
@@ -119,7 +97,10 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
 }
 
 function downloadDocument(doc: DocumentRecord) {
-  const blob = base64ToBlob(doc.file_base64, doc.mime_type);
+  const binary = atob(doc.file_base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: doc.mime_type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

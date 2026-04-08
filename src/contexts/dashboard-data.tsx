@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import type {
@@ -63,6 +64,8 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
   >(null);
   const [loading, setLoading] = useState(true);
   const [previewDocuments, setPreviewDocuments] = useState<DocumentRecord[] | null>(null);
+  // Track document IDs to detect real document list changes (not chat/credit updates)
+  const docIdsRef = useRef<string>("");
 
   const setters = {
     setDocuments,
@@ -85,6 +88,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
 
         if (res.ok) {
           const data: UserDashboardData = await res.json();
+          docIdsRef.current = data.documents.map((d) => d.file_id).sort().join(",");
           applyDashboardData(data, setters);
         }
       } catch (err) {
@@ -105,13 +109,17 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/user-data");
       if (res.ok) {
         const data: UserDashboardData = await res.json();
+        // Only invalidate preview cache when the document list actually changes
+        const newDocIds = data.documents.map((d) => d.file_id).sort().join(",");
+        if (newDocIds !== docIdsRef.current) {
+          docIdsRef.current = newDocIds;
+          setPreviewDocuments(null);
+        }
         applyDashboardData(data, setters);
       }
     } catch {
       // fail silently
     }
-    // Invalidate the preview cache so next preview fetches fresh data
-    setPreviewDocuments(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
