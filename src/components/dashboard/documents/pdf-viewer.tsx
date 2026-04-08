@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -20,6 +20,19 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Measure container width so the PDF page fills it exactly
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setContainerWidth(entry.contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const pdfData = `data:application/pdf;base64,${base64}`;
 
@@ -52,8 +65,11 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
         </div>
       )}
 
-      {/* PDF canvas */}
-      <div className="w-full overflow-auto max-h-[60vh] flex justify-center border border-border rounded bg-muted/20">
+      {/* PDF canvas — width tracks the container so it never overflows */}
+      <div
+        ref={containerRef}
+        className="w-full overflow-y-auto max-h-[60vh] border border-border rounded bg-muted/20"
+      >
         {loading && (
           <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -68,12 +84,14 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
           onLoadError={() => setLoading(false)}
           loading={null}
         >
-          <Page
-            pageNumber={pageNumber}
-            width={600}
-            renderAnnotationLayer={false}
-            renderTextLayer={true}
-          />
+          {containerWidth > 0 && (
+            <Page
+              pageNumber={pageNumber}
+              width={containerWidth}
+              renderAnnotationLayer={false}
+              renderTextLayer={true}
+            />
+          )}
         </Document>
       </div>
     </div>
