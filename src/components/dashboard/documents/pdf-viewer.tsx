@@ -4,13 +4,17 @@ import { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
+
+const ZOOM_STEP = 0.25;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 3.0;
 
 interface PdfViewerProps {
   base64: string;
@@ -21,9 +25,10 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
   const [pageNumber, setPageNumber] = useState(1);
   const [loading, setLoading] = useState(true);
   const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [zoom, setZoom] = useState(1.0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Measure container width so the PDF page fills it exactly
+  // Measure container width so the PDF page fills it at 100% zoom
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -35,40 +40,73 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
   }, []);
 
   const pdfData = `data:application/pdf;base64,${base64}`;
+  const pageWidth = containerWidth > 0 ? Math.round(containerWidth * zoom) : 0;
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      {/* Page navigation */}
-      {numPages > 1 && (
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+    <div className="flex flex-col gap-3">
+      {/* Toolbar: page navigation + zoom */}
+      <div className="flex items-center justify-between">
+        {/* Page navigation */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {numPages > 1 && (
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                disabled={pageNumber <= 1}
+                onClick={() => setPageNumber((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span>
+                Page {pageNumber} of {numPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
+                disabled={pageNumber >= numPages}
+                onClick={() => setPageNumber((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Button
             variant="outline"
             size="icon"
             className="h-7 w-7"
-            disabled={pageNumber <= 1}
-            onClick={() => setPageNumber((p) => p - 1)}
+            disabled={zoom <= ZOOM_MIN}
+            onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))}
+            title="Zoom out"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ZoomOut className="h-4 w-4" />
           </Button>
-          <span>
-            Page {pageNumber} of {numPages}
+          <span className="w-12 text-center tabular-nums">
+            {Math.round(zoom * 100)}%
           </span>
           <Button
             variant="outline"
             size="icon"
             className="h-7 w-7"
-            disabled={pageNumber >= numPages}
-            onClick={() => setPageNumber((p) => p + 1)}
+            disabled={zoom >= ZOOM_MAX}
+            onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))}
+            title="Zoom in"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
-      )}
+      </div>
 
-      {/* PDF canvas — width tracks the container so it never overflows */}
+      {/* PDF canvas — overflow-auto allows scrolling when zoomed in */}
       <div
         ref={containerRef}
-        className="w-full overflow-y-auto max-h-[60vh] border border-border rounded bg-muted/20"
+        className="w-full overflow-auto max-h-[60vh] border border-border rounded bg-muted/20"
       >
         {loading && (
           <div className="flex h-40 items-center justify-center">
@@ -84,10 +122,10 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
           onLoadError={() => setLoading(false)}
           loading={null}
         >
-          {containerWidth > 0 && (
+          {pageWidth > 0 && (
             <Page
               pageNumber={pageNumber}
-              width={containerWidth}
+              width={pageWidth}
               renderAnnotationLayer={false}
               renderTextLayer={true}
             />

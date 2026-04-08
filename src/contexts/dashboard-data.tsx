@@ -76,20 +76,27 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
     setTotalDocuments,
   };
 
-  // Single fetch on mount
+  // Single fetch on mount — fetch dashboard data and preview documents in parallel
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
 
     async function load() {
       try {
-        const res = await fetch("/api/user-data", { signal });
+        const [userDataRes, previewRes] = await Promise.all([
+          fetch("/api/user-data", { signal }),
+          fetch("/api/documents/preview", { signal }),
+        ]);
         if (signal.aborted) return;
 
-        if (res.ok) {
-          const data: UserDashboardData = await res.json();
+        if (userDataRes.ok) {
+          const data: UserDashboardData = await userDataRes.json();
           docIdsRef.current = data.documents.map((d) => d.file_id).sort().join(",");
           applyDashboardData(data, setters);
+        }
+        if (previewRes.ok) {
+          const preview: DocumentRecord[] = await previewRes.json();
+          setPreviewDocuments(preview);
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -109,11 +116,15 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/user-data");
       if (res.ok) {
         const data: UserDashboardData = await res.json();
-        // Only invalidate preview cache when the document list actually changes
         const newDocIds = data.documents.map((d) => d.file_id).sort().join(",");
-        if (newDocIds !== docIdsRef.current) {
+        const docsChanged = newDocIds !== docIdsRef.current;
+        if (docsChanged) {
           docIdsRef.current = newDocIds;
-          setPreviewDocuments(null);
+          // Re-fetch preview documents in the background so cache stays warm
+          fetch("/api/documents/preview")
+            .then((r) => (r.ok ? r.json() : null))
+            .then((preview) => { if (preview) setPreviewDocuments(preview); })
+            .catch(() => setPreviewDocuments(null));
         }
         applyDashboardData(data, setters);
       }
