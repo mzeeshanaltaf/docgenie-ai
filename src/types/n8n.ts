@@ -11,7 +11,7 @@ export type DocumentRecord = {
 // ─── Chat ───────────────────────────────────────────────────────────────────
 
 export type ChatMessage = {
-  id?: number;
+  id?: number | string;
   user_message: string;
   ai_response: string;
   created_at: string;

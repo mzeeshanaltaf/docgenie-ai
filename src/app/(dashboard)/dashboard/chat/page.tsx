@@ -35,8 +35,13 @@ export default function ChatPage() {
     {}
   );
   const abortRef = useRef<AbortController | null>(null);
+  // Tracks the next expected message ID for the active session.
+  // null = unknown (will fetch on next AI response). Set after first response.
+  const nextMsgIdRef = useRef<number | null>(null);
 
-  // Load messages when switching sessions
+  // Load messages when switching to an existing session.
+  // If the session isn't in chatSessions yet (new in-progress session),
+  // leave localMessages untouched so optimistic messages aren't wiped.
   useEffect(() => {
     if (!activeSessionId || !chatSessions) {
       setLocalMessages([]);
@@ -50,23 +55,28 @@ export default function ChatPage() {
       const msgs: LocalMessage[] = [];
       for (const m of session.messages) {
         const ts = m.created_at ? new Date(m.created_at) : undefined;
+        const id = m.id != null ? Number(m.id) : undefined;
         msgs.push({ role: "user", content: m.user_message, timestamp: ts });
-        msgs.push({ role: "assistant", content: m.ai_response, timestamp: ts, id: m.id, reaction: m.reaction });
+        msgs.push({ role: "assistant", content: m.ai_response, timestamp: ts, id, reaction: m.reaction });
       }
       setLocalMessages(msgs);
-    } else {
-      setLocalMessages([]);
+      // Update ID tracker so subsequent new messages get correct IDs
+      const lastId = msgs.findLast((m) => m.role === "assistant" && m.id != null)?.id;
+      if (lastId != null) nextMsgIdRef.current = (lastId as number) + 1;
     }
+    // Session not found = new in-progress session; leave messages as-is
   }, [activeSessionId, chatSessions]);
 
   const handleNewChat = useCallback(() => {
     const newId = crypto.randomUUID();
     setActiveSessionId(newId);
     setLocalMessages([]);
+    nextMsgIdRef.current = null;
   }, []);
 
   const handleSelectSession = useCallback((sessionId: string) => {
     setActiveSessionId(sessionId);
+    nextMsgIdRef.current = null;
   }, []);
 
   const handleSend = useCallback(
@@ -211,10 +221,43 @@ export default function ChatPage() {
         const content = stripOuterQuotes(raw);
         setStreamingContent(undefined);
         setStreamingStartTime(undefined);
-        setLocalMessages((prev) => [
-          ...prev,
-          { role: "assistant", content, timestamp: new Date() },
-        ]);
+
+        if (nextMsgIdRef.current !== null) {
+          // We know the next ID — assign it directly
+          const id = nextMsgIdRef.current;
+          nextMsgIdRef.current = id + 1;
+          setLocalMessages((prev) => [
+            ...prev,
+            { role: "assistant", content, timestamp: new Date(), id },
+          ]);
+        } else {
+          // Unknown ID — commit without it, then fetch session history to get it
+          setLocalMessages((prev) => [
+            ...prev,
+            { role: "assistant", content, timestamp: new Date() },
+          ]);
+          fetch(`/api/chat/session-history?session_id=${sessionId}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((history: Array<{ id: string | number }> | null) => {
+              if (!history?.length) return;
+              const lastId = Number(history[history.length - 1].id);
+              if (!isNaN(lastId)) {
+                nextMsgIdRef.current = lastId + 1;
+                // Patch the last assistant message with its real ID
+                setLocalMessages((prev) => {
+                  const updated = [...prev];
+                  for (let i = updated.length - 1; i >= 0; i--) {
+                    if (updated[i].role === "assistant" && updated[i].id == null) {
+                      updated[i] = { ...updated[i], id: lastId };
+                      break;
+                    }
+                  }
+                  return updated;
+                });
+              }
+            })
+            .catch(() => {/* non-critical */});
+        }
       }
 
       // Fire-and-forget: generate title for first message

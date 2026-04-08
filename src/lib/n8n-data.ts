@@ -2,6 +2,7 @@ import { callN8nWebhook } from "./n8n";
 import type {
   DocumentRecord,
   ChatSession,
+  ChatMessage,
   UserDashboardData,
   UserDashboardResponse,
 } from "@/types/n8n";
@@ -53,6 +54,21 @@ export async function getUserDocuments(
   });
   const arr = Array.isArray(data) ? data : [];
   return arr.filter((r): r is DocumentRecord => !!r.file_id);
+}
+
+export async function getSessionChatHistory(
+  userId: string,
+  sessionId: string
+): Promise<ChatMessage[]> {
+  const data = await callN8nWebhook<ChatMessage[] | Record<string, unknown>>(
+    WEBHOOK_ID,
+    {
+      event_type: "get_session_chat_history",
+      user_id: userId,
+      session_id: sessionId,
+    }
+  );
+  return Array.isArray(data) ? data : [];
 }
 
 export async function getChatHistory(
