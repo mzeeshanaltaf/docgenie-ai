@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -16,8 +17,15 @@ const nextConfig: NextConfig = {
   // Hides the Next.js dev-tools indicator (the N logo in the bottom-left corner)
   devIndicators: false,
 
+  // Turbopack alias (Next.js 16 default bundler)
+  turbopack: {
+    resolveAlias: {
+      canvas: path.resolve(__dirname, "./canvas-stub.js"),
+    },
+  },
+
+  // Webpack alias (fallback for --webpack flag or older builds)
   webpack: (config) => {
-    // Required by react-pdf / pdfjs-dist in Next.js
     config.resolve.alias.canvas = false;
     return config;
   },
