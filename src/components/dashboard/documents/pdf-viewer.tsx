@@ -105,7 +105,7 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
 
       {/* Outer div measures the available width (constrained by dialog).
           Inner div scrolls when content is wider/taller than the container. */}
-      <div ref={containerRef} className="w-full">
+      <div ref={containerRef} className="w-full overflow-hidden">
       <div className="overflow-auto max-h-[60vh] border border-border rounded bg-muted/20">
         {loading && (
           <div className="flex h-40 items-center justify-center">
