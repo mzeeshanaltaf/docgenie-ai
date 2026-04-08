@@ -97,8 +97,8 @@ export default function ChatPage() {
       { role: "user", content: message, timestamp: userTimestamp },
     ]);
     setIsLoading(true);
-    setStreamingContent("");
-    setStreamingStartTime(new Date());
+    setStreamingContent(undefined);
+    setStreamingStartTime(undefined);
 
     // Abort any previous in-flight request
     abortRef.current?.abort();
@@ -170,7 +170,8 @@ export default function ChatPage() {
                     // Not JSON, ignore
                   }
                 } else {
-                  // AI token chunk
+                  // AI token chunk — set start time on first token
+                  if (!streamedText) setStreamingStartTime(new Date());
                   streamedText += event.content;
                   setStreamingContent(streamedText);
                 }

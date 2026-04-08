@@ -21,6 +21,11 @@ function normalizeContent(text: string): string {
   return text.replace(/\\n/g, "\n");
 }
 
+function stripOuterQuotes(text: string): string {
+  const t = text.trim();
+  return t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t;
+}
+
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
@@ -81,7 +86,7 @@ export function ChatMessages({
     <div ref={scrollRef} className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
         {messages.map((msg, i) => {
-          const content = normalizeContent(msg.content);
+          const content = normalizeContent(stripOuterQuotes(msg.content));
           return (
             <div
               key={i}
@@ -131,7 +136,7 @@ export function ChatMessages({
             <div className="flex flex-col items-start max-w-[80%]">
               <div className="relative rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
                 <p className="whitespace-pre-wrap">
-                  {normalizeContent(streamingContent)}
+                  {normalizeContent(stripOuterQuotes(streamingContent))}
                   <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
                 </p>
               </div>

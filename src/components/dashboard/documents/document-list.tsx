@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDashboardData } from "@/contexts/dashboard-data";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
   Trash2,
   Loader2,
   Eye,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { DocumentRecord } from "@/types/n8n";
@@ -37,6 +38,42 @@ function formatFileSize(bytes: string | number) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+function PdfPreview({ base64, fileName }: { base64: string; fileName: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const blob = base64ToBlob(base64, "application/pdf");
+    const url = URL.createObjectURL(blob);
+    setBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [base64]);
+
+  if (!blobUrl) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      src={blobUrl}
+      className="w-full h-[60vh] rounded border border-border"
+      title={fileName}
+    />
+  );
+}
+
 function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   const { mime_type, file_base64, file_name } = doc;
 
@@ -49,13 +86,7 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
   }
 
   if (mime_type === "application/pdf") {
-    return (
-      <iframe
-        src={`data:application/pdf;base64,${file_base64}`}
-        className="w-full h-[60vh] rounded border border-border"
-        title={file_name}
-      />
-    );
+    return <PdfPreview base64={file_base64} fileName={file_name} />;
   }
 
   if (mime_type === "text/csv" || mime_type === "text/plain") {
@@ -76,22 +107,25 @@ function DocumentPreview({ doc }: { doc: DocumentRecord }) {
     );
   }
 
-  // Unsupported preview — offer download
+  // Unsupported preview type
   const ext = file_name.split(".").pop()?.toUpperCase() ?? "File";
   return (
     <div className="flex flex-col items-center gap-4 py-8">
       <p className="text-sm text-muted-foreground">
         Preview not available for {ext} files.
       </p>
-      <a
-        href={`data:${mime_type};base64,${file_base64}`}
-        download={file_name}
-        className="text-sm text-emerald-600 dark:text-emerald-400 underline underline-offset-2 hover:opacity-80"
-      >
-        Download {file_name}
-      </a>
     </div>
   );
+}
+
+function downloadDocument(doc: DocumentRecord) {
+  const blob = base64ToBlob(doc.file_base64, doc.mime_type);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = doc.file_name;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function DocumentList() {
@@ -243,6 +277,16 @@ export function DocumentList() {
           </DialogHeader>
           {previewDoc && <DocumentPreview doc={previewDoc} />}
           <DialogFooter>
+            {previewDoc && (
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => downloadDocument(previewDoc)}
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </Button>
+            )}
             <Button variant="outline" onClick={() => { setPreviewDoc(null); setPreviewing(null); }}>
               Close
             </Button>
