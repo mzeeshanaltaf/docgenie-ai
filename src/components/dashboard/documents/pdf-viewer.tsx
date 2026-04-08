@@ -114,7 +114,10 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
 
       {/* Scroll container: independent of measurement div, scrolls when PDF
           page (containerWidth * zoom) is wider/taller than the dialog. */}
-      <div className="w-full overflow-auto max-h-[60vh] border border-border rounded bg-muted/20">
+      <div
+        className="overflow-auto max-h-[60vh] border border-border rounded bg-muted/20"
+        style={{ width: containerWidth > 0 ? containerWidth : "100%" }}
+      >
         {loading && (
           <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

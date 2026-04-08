@@ -247,7 +247,7 @@ export function DocumentList() {
           }
         }}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle className="truncate">{previewDoc?.file_name}</DialogTitle>
             <DialogDescription>
