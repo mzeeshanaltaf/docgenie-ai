@@ -103,9 +103,12 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
         </div>
       </div>
 
-      {/* Outer div measures the available width (constrained by dialog).
-          Inner div scrolls when content is wider/taller than the container. */}
-      <div ref={containerRef} className="w-full overflow-hidden">
+      {/* Zero-height sentinel: purely for measuring available width.
+          Has no content so it never expands — ResizeObserver stays stable. */}
+      <div ref={containerRef} className="w-full h-0" aria-hidden />
+
+      {/* Scroll container: independent of measurement div, scrolls when PDF
+          page (containerWidth * zoom) is wider/taller than the dialog. */}
       <div className="overflow-auto max-h-[60vh] border border-border rounded bg-muted/20">
         {loading && (
           <div className="flex h-40 items-center justify-center">
@@ -130,7 +133,6 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
             />
           )}
         </Document>
-      </div>
       </div>
     </div>
   );
