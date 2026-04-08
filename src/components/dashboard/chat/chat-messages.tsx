@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { BookOpen, User, Copy, Check } from "lucide-react";
 import { LoadingDots } from "@/components/ui/loading-dots";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   role: "user" | "assistant";
@@ -28,6 +30,42 @@ function stripOuterQuotes(text: string): string {
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-1 first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-sm font-bold mt-3 mb-1 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1 first:mt-0">{children}</h3>,
+        p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
+        ul: ({ children }) => <ul className="mb-2 last:mb-0 list-disc pl-5 space-y-0.5">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-2 last:mb-0 list-decimal pl-5 space-y-0.5">{children}</ol>,
+        li: ({ children }) => <li>{children}</li>,
+        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        em: ({ children }) => <em className="italic">{children}</em>,
+        code: ({ children, className }) => {
+          const isBlock = className?.startsWith("language-");
+          return isBlock ? (
+            <code className="block bg-black/10 dark:bg-white/10 rounded px-3 py-2 text-xs font-mono my-2 overflow-x-auto whitespace-pre">{children}</code>
+          ) : (
+            <code className="bg-black/10 dark:bg-white/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+          );
+        },
+        pre: ({ children }) => <pre className="my-2">{children}</pre>,
+        blockquote: ({ children }) => <blockquote className="border-l-2 border-muted-foreground/30 pl-3 italic my-2">{children}</blockquote>,
+        hr: () => <hr className="my-3 border-muted-foreground/20" />,
+        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">{children}</a>,
+        table: ({ children }) => <div className="overflow-x-auto my-2"><table className="text-xs border-collapse w-full">{children}</table></div>,
+        th: ({ children }) => <th className="border border-muted-foreground/30 px-2 py-1 bg-black/5 dark:bg-white/5 font-semibold text-left">{children}</th>,
+        td: ({ children }) => <td className="border border-muted-foreground/30 px-2 py-1">{children}</td>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -109,7 +147,11 @@ export function ChatMessages({
                       : "bg-muted"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{content}</p>
+                  {msg.role === "user" ? (
+                    <p className="whitespace-pre-wrap">{content}</p>
+                  ) : (
+                    <MarkdownContent content={content} />
+                  )}
                 </div>
                 {msg.timestamp && (
                   <span className="mt-1 text-[10px] text-muted-foreground">
@@ -135,10 +177,8 @@ export function ChatMessages({
             </div>
             <div className="flex flex-col items-start max-w-[80%]">
               <div className="relative rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
-                <p className="whitespace-pre-wrap">
-                  {normalizeContent(stripOuterQuotes(streamingContent))}
-                  <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
-                </p>
+                <MarkdownContent content={normalizeContent(stripOuterQuotes(streamingContent))} />
+                <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
               </div>
               {streamingStartTime && (
                 <span className="mt-1 text-[10px] text-muted-foreground">

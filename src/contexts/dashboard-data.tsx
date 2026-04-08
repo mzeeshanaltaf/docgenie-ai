@@ -24,6 +24,8 @@ interface DashboardDataContextType {
   creditHistory: CreditTransaction[] | null;
   loading: boolean;
   refreshAll: () => Promise<void>;
+  previewDocuments: DocumentRecord[] | null;
+  loadPreviewDocuments: () => Promise<DocumentRecord[]>;
 }
 
 const DashboardDataContext = createContext<DashboardDataContextType | null>(
@@ -60,6 +62,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
     CreditTransaction[] | null
   >(null);
   const [loading, setLoading] = useState(true);
+  const [previewDocuments, setPreviewDocuments] = useState<DocumentRecord[] | null>(null);
 
   const setters = {
     setDocuments,
@@ -107,8 +110,20 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
     } catch {
       // fail silently
     }
+    // Invalidate the preview cache so next preview fetches fresh data
+    setPreviewDocuments(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Lazy-load preview documents (with base64). Returns cached data if available.
+  const loadPreviewDocuments = useCallback(async (): Promise<DocumentRecord[]> => {
+    if (previewDocuments !== null) return previewDocuments;
+    const res = await fetch("/api/documents/preview");
+    if (!res.ok) throw new Error("Failed to load preview documents");
+    const data: DocumentRecord[] = await res.json();
+    setPreviewDocuments(data);
+    return data;
+  }, [previewDocuments]);
 
   return (
     <DashboardDataContext.Provider
@@ -121,6 +136,8 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
         creditHistory,
         loading,
         refreshAll,
+        previewDocuments,
+        loadPreviewDocuments,
       }}
     >
       {children}

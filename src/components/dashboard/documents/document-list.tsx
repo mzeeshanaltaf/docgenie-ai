@@ -66,10 +66,10 @@ function PdfPreview({ base64, fileName }: { base64: string; fileName: string }) 
   }
 
   return (
-    <iframe
+    <embed
       src={blobUrl}
+      type="application/pdf"
       className="w-full h-[60vh] rounded border border-border"
-      title={fileName}
     />
   );
 }
@@ -129,7 +129,7 @@ function downloadDocument(doc: DocumentRecord) {
 }
 
 export function DocumentList() {
-  const { documents, refreshAll } = useDashboardData();
+  const { documents, refreshAll, loadPreviewDocuments } = useDashboardData();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{
     id: string;
@@ -173,11 +173,9 @@ export function DocumentList() {
     setPreviewDoc(null);
 
     try {
-      const res = await fetch("/api/documents/preview");
-      if (!res.ok) throw new Error("Failed to fetch preview");
-      const data: DocumentRecord[] = await res.json();
+      const data = await loadPreviewDocuments();
       const doc = data.find((d) => d.file_id === fileId) ?? null;
-      if (!doc) throw new Error("Document not found");
+      if (!doc) throw new Error("Document not found in preview data");
       setPreviewDoc(doc);
     } catch {
       toast.error("Failed to load document preview");
