@@ -28,12 +28,17 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
   const [zoom, setZoom] = useState(1.0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Measure container width so the PDF page fills it at 100% zoom
+  // Measure the dialog's available width once — disconnect immediately after
+  // the first non-zero reading so PDF content can never trigger re-observation.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
-      setContainerWidth(entry.contentRect.width);
+      const w = Math.floor(entry.contentRect.width);
+      if (w > 0) {
+        setContainerWidth(w);
+        observer.disconnect();
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -109,7 +114,7 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
 
       {/* Scroll container: independent of measurement div, scrolls when PDF
           page (containerWidth * zoom) is wider/taller than the dialog. */}
-      <div className="overflow-auto max-h-[60vh] border border-border rounded bg-muted/20">
+      <div className="w-full overflow-auto max-h-[60vh] border border-border rounded bg-muted/20">
         {loading && (
           <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
