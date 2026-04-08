@@ -1,21 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, User, Loader2, Copy, Check } from "lucide-react";
+import { BookOpen, User, Copy, Check } from "lucide-react";
+import { LoadingDots } from "@/components/ui/loading-dots";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  timestamp?: Date;
 }
 
 interface ChatMessagesProps {
   messages: Message[];
   isLoading: boolean;
   streamingContent?: string;
+  streamingStartTime?: Date;
 }
 
 function normalizeContent(text: string): string {
   return text.replace(/\\n/g, "\n");
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -46,6 +53,7 @@ export function ChatMessages({
   messages,
   isLoading,
   streamingContent,
+  streamingStartTime,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -87,13 +95,22 @@ export function ChatMessages({
                 </div>
               )}
               <div
-                className={`relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-950"
-                    : "bg-muted"
-                }`}
+                className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} max-w-[80%]`}
               >
-                <p className="whitespace-pre-wrap">{content}</p>
+                <div
+                  className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-950"
+                      : "bg-muted"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{content}</p>
+                </div>
+                {msg.timestamp && (
+                  <span className="mt-1 text-[10px] text-muted-foreground">
+                    {formatTime(msg.timestamp)}
+                  </span>
+                )}
               </div>
               <CopyButton text={content} />
               {msg.role === "user" && (
@@ -111,23 +128,30 @@ export function ChatMessages({
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
               <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="relative max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
-              <p className="whitespace-pre-wrap">
-                {normalizeContent(streamingContent)}
-                <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
-              </p>
+            <div className="flex flex-col items-start max-w-[80%]">
+              <div className="relative rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
+                <p className="whitespace-pre-wrap">
+                  {normalizeContent(streamingContent)}
+                  <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
+                </p>
+              </div>
+              {streamingStartTime && (
+                <span className="mt-1 text-[10px] text-muted-foreground">
+                  {formatTime(streamingStartTime)}
+                </span>
+              )}
             </div>
           </div>
         )}
 
-        {/* Waiting spinner (before stream starts) */}
+        {/* Waiting dots (before stream starts) */}
         {isLoading && !isStreaming && (
           <div className="flex gap-3">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
               <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="rounded-2xl bg-muted px-4 py-3">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <LoadingDots size={6} />
             </div>
           </div>
         )}

@@ -12,6 +12,12 @@ import type { ChatSession } from "@/types/n8n";
 interface LocalMessage {
   role: "user" | "assistant";
   content: string;
+  timestamp?: Date;
+}
+
+function stripOuterQuotes(text: string): string {
+  const t = text.trim();
+  return t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1).trim() : t;
 }
 
 export default function ChatPage() {
@@ -22,6 +28,7 @@ export default function ChatPage() {
   const [streamingContent, setStreamingContent] = useState<string | undefined>(
     undefined
   );
+  const [streamingStartTime, setStreamingStartTime] = useState<Date | undefined>(undefined);
   const [sessionTitles, setSessionTitles] = useState<Record<string, string>>(
     {}
   );
@@ -40,8 +47,9 @@ export default function ChatPage() {
     if (session?.messages) {
       const msgs: LocalMessage[] = [];
       for (const m of session.messages) {
-        msgs.push({ role: "user", content: m.user_message });
-        msgs.push({ role: "assistant", content: m.ai_response });
+        const ts = m.created_at ? new Date(m.created_at) : undefined;
+        msgs.push({ role: "user", content: m.user_message, timestamp: ts });
+        msgs.push({ role: "assistant", content: m.ai_response, timestamp: ts });
       }
       setLocalMessages(msgs);
     } else {
@@ -82,13 +90,15 @@ export default function ChatPage() {
     sessionId: string,
     isFirstMessage: boolean
   ) => {
+    const userTimestamp = new Date();
     // Optimistic update — add user message
     setLocalMessages((prev) => [
       ...prev,
-      { role: "user", content: message },
+      { role: "user", content: message, timestamp: userTimestamp },
     ]);
     setIsLoading(true);
     setStreamingContent("");
+    setStreamingStartTime(new Date());
 
     // Abort any previous in-flight request
     abortRef.current?.abort();
@@ -114,6 +124,7 @@ export default function ChatPage() {
         toast.error(errorMessage);
         setLocalMessages((prev) => prev.slice(0, -1));
         setStreamingContent(undefined);
+        setStreamingStartTime(undefined);
         return;
       }
 
@@ -122,9 +133,10 @@ export default function ChatPage() {
       if (!reader) {
         const text = await res.text();
         setStreamingContent(undefined);
+        setStreamingStartTime(undefined);
         setLocalMessages((prev) => [
           ...prev,
-          { role: "assistant", content: text || "No response" },
+          { role: "assistant", content: text || "No response", timestamp: new Date() },
         ]);
       } else {
         const decoder = new TextDecoder();
@@ -191,11 +203,14 @@ export default function ChatPage() {
         }
 
         // Use the final webhook output if available, otherwise the streamed text
-        const content = finalOutput || streamedText || "No response";
+        // Strip outer quotes that n8n sometimes wraps the response in
+        const raw = finalOutput || streamedText || "No response";
+        const content = stripOuterQuotes(raw);
         setStreamingContent(undefined);
+        setStreamingStartTime(undefined);
         setLocalMessages((prev) => [
           ...prev,
-          { role: "assistant", content },
+          { role: "assistant", content, timestamp: new Date() },
         ]);
       }
 
@@ -230,6 +245,7 @@ export default function ChatPage() {
       toast.error("Failed to send message");
       setLocalMessages((prev) => prev.slice(0, -1));
       setStreamingContent(undefined);
+      setStreamingStartTime(undefined);
     } finally {
       setIsLoading(false);
     }
@@ -291,6 +307,7 @@ export default function ChatPage() {
           messages={localMessages}
           isLoading={isLoading}
           streamingContent={streamingContent}
+          streamingStartTime={streamingStartTime}
         />
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </div>

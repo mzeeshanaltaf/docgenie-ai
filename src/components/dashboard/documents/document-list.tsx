@@ -17,8 +17,10 @@ import {
   File,
   Trash2,
   Loader2,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { DocumentRecord } from "@/types/n8n";
 
 function getFileIcon(mimeType: string) {
   if (mimeType === "text/csv") return FileSpreadsheet;
@@ -35,6 +37,63 @@ function formatFileSize(bytes: string | number) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function DocumentPreview({ doc }: { doc: DocumentRecord }) {
+  const { mime_type, file_base64, file_name } = doc;
+
+  if (!file_base64) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-8">
+        No preview available.
+      </p>
+    );
+  }
+
+  if (mime_type === "application/pdf") {
+    return (
+      <iframe
+        src={`data:application/pdf;base64,${file_base64}`}
+        className="w-full h-[60vh] rounded border border-border"
+        title={file_name}
+      />
+    );
+  }
+
+  if (mime_type === "text/csv" || mime_type === "text/plain") {
+    let text = "";
+    try {
+      text = atob(file_base64);
+    } catch {
+      return (
+        <p className="text-sm text-destructive text-center py-8">
+          Failed to decode file content.
+        </p>
+      );
+    }
+    return (
+      <pre className="overflow-auto max-h-[60vh] text-xs bg-muted rounded p-4 whitespace-pre-wrap wrap-break-word">
+        {text}
+      </pre>
+    );
+  }
+
+  // Unsupported preview — offer download
+  const ext = file_name.split(".").pop()?.toUpperCase() ?? "File";
+  return (
+    <div className="flex flex-col items-center gap-4 py-8">
+      <p className="text-sm text-muted-foreground">
+        Preview not available for {ext} files.
+      </p>
+      <a
+        href={`data:${mime_type};base64,${file_base64}`}
+        download={file_name}
+        className="text-sm text-emerald-600 dark:text-emerald-400 underline underline-offset-2 hover:opacity-80"
+      >
+        Download {file_name}
+      </a>
+    </div>
+  );
+}
+
 export function DocumentList() {
   const { documents, refreshAll } = useDashboardData();
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -42,6 +101,10 @@ export function DocumentList() {
     id: string;
     name: string;
   } | null>(null);
+
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const handleDelete = async (fileId: string) => {
     setDeleting(fileId);
@@ -67,6 +130,26 @@ export function DocumentList() {
       toast.error("Failed to delete document");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handlePreview = async (fileId: string) => {
+    setPreviewing(fileId);
+    setPreviewLoading(true);
+    setPreviewDoc(null);
+
+    try {
+      const res = await fetch("/api/documents/preview");
+      if (!res.ok) throw new Error("Failed to fetch preview");
+      const data: DocumentRecord[] = await res.json();
+      const doc = data.find((d) => d.file_id === fileId) ?? null;
+      if (!doc) throw new Error("Document not found");
+      setPreviewDoc(doc);
+    } catch {
+      toast.error("Failed to load document preview");
+      setPreviewing(null);
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -102,28 +185,70 @@ export function DocumentList() {
                   </p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                disabled={deleting === doc.file_id}
-                onClick={() =>
-                  setConfirmDelete({
-                    id: doc.file_id,
-                    name: doc.file_name,
-                  })
-                }
-              >
-                {deleting === doc.file_id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  disabled={previewing === doc.file_id && previewLoading}
+                  onClick={() => handlePreview(doc.file_id)}
+                  title="Preview"
+                >
+                  {previewing === doc.file_id && previewLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  disabled={deleting === doc.file_id}
+                  onClick={() =>
+                    setConfirmDelete({
+                      id: doc.file_id,
+                      name: doc.file_name,
+                    })
+                  }
+                >
+                  {deleting === doc.file_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           );
         })}
       </div>
+
+      {/* Preview dialog */}
+      <Dialog
+        open={!!previewDoc}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewDoc(null);
+            setPreviewing(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewDoc?.file_name}</DialogTitle>
+            <DialogDescription>
+              {previewDoc && formatFileSize(previewDoc.file_size)} &middot; {previewDoc?.mime_type}
+            </DialogDescription>
+          </DialogHeader>
+          {previewDoc && <DocumentPreview doc={previewDoc} />}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPreviewDoc(null); setPreviewing(null); }}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation dialog */}
       <Dialog
