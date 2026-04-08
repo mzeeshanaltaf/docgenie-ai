@@ -13,6 +13,8 @@ interface LocalMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+  id?: number;
+  reaction?: "like" | "dislike" | null;
 }
 
 function stripOuterQuotes(text: string): string {
@@ -49,7 +51,7 @@ export default function ChatPage() {
       for (const m of session.messages) {
         const ts = m.created_at ? new Date(m.created_at) : undefined;
         msgs.push({ role: "user", content: m.user_message, timestamp: ts });
-        msgs.push({ role: "assistant", content: m.ai_response, timestamp: ts });
+        msgs.push({ role: "assistant", content: m.ai_response, timestamp: ts, id: m.id, reaction: m.reaction });
       }
       setLocalMessages(msgs);
     } else {
@@ -309,6 +311,7 @@ export default function ChatPage() {
           isLoading={isLoading}
           streamingContent={streamingContent}
           streamingStartTime={streamingStartTime}
+          sessionId={activeSessionId ?? undefined}
         />
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </div>

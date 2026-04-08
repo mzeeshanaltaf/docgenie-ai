@@ -11,10 +11,12 @@ export type DocumentRecord = {
 // ─── Chat ───────────────────────────────────────────────────────────────────
 
 export type ChatMessage = {
+  id?: number;
   user_message: string;
   ai_response: string;
   created_at: string;
   updated_at: string;
+  reaction?: "like" | "dislike" | null;
 };
 
 export type ChatSession = {

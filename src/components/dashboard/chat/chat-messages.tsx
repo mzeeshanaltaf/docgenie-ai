@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, User, Copy, Check } from "lucide-react";
+import { BookOpen, User, Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,6 +10,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+  id?: number;
+  reaction?: "like" | "dislike" | null;
 }
 
 interface ChatMessagesProps {
@@ -17,6 +19,7 @@ interface ChatMessagesProps {
   isLoading: boolean;
   streamingContent?: string;
   streamingStartTime?: Date;
+  sessionId?: string;
 }
 
 function normalizeContent(text: string): string {
@@ -92,11 +95,68 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function ReactionButtons({
+  messageId,
+  sessionId,
+  initialReaction,
+}: {
+  messageId: number;
+  sessionId: string;
+  initialReaction?: "like" | "dislike" | null;
+}) {
+  const [reaction, setReaction] = useState<"like" | "dislike" | null>(
+    initialReaction ?? null
+  );
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = (r: "like" | "dislike") => {
+    const next = reaction === r ? null : r;
+    setReaction(next);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetch("/api/chat/reaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, id: messageId, reaction: next }),
+      }).catch(() => {/* fire-and-forget */});
+    }, 600);
+  };
+
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      <button
+        onClick={() => handleClick("like")}
+        title="Like"
+        className={`rounded p-1 transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${
+          reaction === "like"
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-muted-foreground opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={() => handleClick("dislike")}
+        title="Dislike"
+        className={`rounded p-1 transition-colors hover:bg-black/10 dark:hover:bg-white/10 ${
+          reaction === "dislike"
+            ? "text-red-500 dark:text-red-400"
+            : "text-muted-foreground opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export function ChatMessages({
   messages,
   isLoading,
   streamingContent,
   streamingStartTime,
+  sessionId,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -157,6 +217,13 @@ export function ChatMessages({
                   <span className="mt-1 text-[10px] text-muted-foreground">
                     {formatTime(msg.timestamp)}
                   </span>
+                )}
+                {msg.role === "assistant" && msg.id != null && sessionId && (
+                  <ReactionButtons
+                    messageId={msg.id}
+                    sessionId={sessionId}
+                    initialReaction={msg.reaction}
+                  />
                 )}
               </div>
               <CopyButton text={content} />
