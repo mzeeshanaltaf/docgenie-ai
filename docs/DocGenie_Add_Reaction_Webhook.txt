@@ -1,0 +1,28 @@
+
+Header Authorization webhook:
+key: x-api-key
+value: N8N_API_KEY set in .env.local
+
+DocGenie Add Reaction:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/184e3718-43d6-474b-b4e7-224125fe1ca4
+Type: POST
+
+Body:
+{
+  "event_type": "add_reaction",
+  "user_id": "user_3Bfvy4n08TekJirHdlLJa7XYF91",
+  "session_id": "6afbbfba-d869-4fc7-ba1d-57f787053513",
+  "id": 34,
+  "reaction": "like"
+}
+
+Responses:
+
+Successful Response:
+[
+  {
+    "success": true
+  }
+]

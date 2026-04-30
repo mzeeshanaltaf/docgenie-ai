@@ -1,0 +1,67 @@
+Header Authorization webhook:
+key: x-api-key
+value: N8N_API_KEY set in .env.local
+
+
+DocGenie Signup Credits:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/29d9da24-5894-472e-a413-8faa15170bfb
+Type: POST
+
+Body:
+{
+
+  "event_type": "signup_credits",
+  "user_id": "b0f97a7f-e8a1-db7a-14ff-64752da7e5c4"
+}
+
+Responses:
+
+Successful Response:
+{
+  "success": true,
+  "status": "CREDITS_ASSIGNED",
+  "message": "Signup document & message credits have been successfully added to your account"
+} 
+
+DocGenie Credit History:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/29d9da24-5894-472e-a413-8faa15170bfb
+Type: POST
+
+Body:
+{
+
+  "event_type": "credit_history",
+  "user_id": "b0f97a7f-e8a1-db7a-14ff-64752da7e5c4"
+}
+
+Responses:
+
+Successful Response:
+[
+  {
+    "transaction_id": "5ebd572a-ca94-4820-86c1-619c7d1eb19c",
+    "user_id": "b0f97a7f-e8a1-db7a-14ff-64752da7e5c4",
+    "unit_type": "credit",
+    "transaction_type": "signup_bonus",
+    "amount_delta": 5,
+    "reference_file_id": null,
+    "file_name_snapshot": null,
+    "description": "Signup document credits",
+    "created_at": "2026-03-10T16:25:46.950Z"
+  },
+  {
+    "transaction_id": "dd980dec-acb6-4abb-88bc-60c7193bfbb2",
+    "user_id": "b0f97a7f-e8a1-db7a-14ff-64752da7e5c4",
+    "unit_type": "message",
+    "transaction_type": "message_bonus",
+    "amount_delta": 100,
+    "reference_file_id": null,
+    "file_name_snapshot": null,
+    "description": "Signup message credits",
+    "created_at": "2026-03-10T16:25:46.950Z"
+  }
+]

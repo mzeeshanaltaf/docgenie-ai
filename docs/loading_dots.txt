@@ -1,0 +1,106 @@
+You are given a task to integrate an existing React component in the codebase
+
+The codebase should support:
+- shadcn project structure  
+- Tailwind CSS
+- Typescript
+
+If it doesn't, provide instructions on how to setup project via shadcn CLI, install Tailwind or Typescript.
+
+Determine the default path for components and styles. 
+If default path for components is not /components/ui, provide instructions on why it's important to create this folder
+Copy-paste this component to /components/ui folder:
+```tsx
+loading-dots.tsx
+import React from "react";
+
+interface LoadingDotsProps {
+  size?: number;
+  children?: React.ReactNode;
+}
+
+const dots = [
+  { animationDelay: "0s" },
+  { animationDelay: "0.2s", marginLeft: 1 },
+  { animationDelay: "0.4s", marginLeft: 1 },
+]
+
+export const LoadingDots = ({ size = 2, children }: LoadingDotsProps) => {
+  return (
+    <span className="inline-flex items-center">
+      {children && <div className="mr-3">{children}</div>}
+      {dots.map((dot) => (
+        <span
+          className="bg-gray-900 inline-block rounded-[50%] animate-loading"
+          style={{ height: size, width: size, ...dot }}
+        />
+      ))}
+    </span>
+  );
+};
+
+demo.tsx
+import { LoadingDots } from "@/components/ui/loading-dots";
+
+export default function DefaultDemo() {
+  return (
+    <div className="flex flex-col gap-4">
+      <LoadingDots />
+      <LoadingDots size={4} />
+    </div>
+  );
+}
+
+```
+
+Extend existing Tailwind 4 index.css with this code (or if project uses Tailwind 3, extend tailwind.config.js or globals.css):
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-context-card-border: var(--context-card-border);
+  --color-gray-900: var(--ds-gray-900);
+  --animate-loading: loading 1.4s linear infinite;
+}
+
+:root {
+  --context-card-border: hsla(0, 0%, 92%, 1);
+  --ds-gray-900: hsla(0, 0%, 40%, 1);
+}
+
+.dark {
+  --context-card-border: hsla(0, 0%, 18%, 1);
+  --ds-gray-900: hsla(0, 0%, 63%, 1);
+}
+
+
+@keyframes loading {
+  0% {
+    opacity: 0.2;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+```
+
+Implementation Guidelines
+ 1. Analyze the component structure and identify all required dependencies
+ 2. Review the component's argumens and state
+ 3. Identify any required context providers or hooks and install them
+ 4. Questions to Ask
+ - What data/props will be passed to this component?
+ - Are there any specific state management requirements?
+ - Are there any required assets (images, icons, etc.)?
+ - What is the expected responsive behavior?
+ - What is the best place to use this component in the app?
+
+Steps to integrate
+ 0. Copy paste all the code above in the correct directories
+ 1. Install external dependencies
+ 2. Fill image assets with Unsplash stock images you know exist
+ 3. Use lucide-react icons for svgs or logos if component requires them

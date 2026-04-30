@@ -1,12 +1,23 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
+import { JsonLd } from "@/components/seo/json-ld";
 import { FileText, MessageSquare, Zap, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About",
   description:
     "Learn about DocGenie — our mission to help people extract knowledge from documents using AI.",
+  alternates: { canonical: "/about" },
+};
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://docgenie.zeeshanai.cloud" },
+    { "@type": "ListItem", position: 2, name: "About", item: "https://docgenie.zeeshanai.cloud/about" },
+  ],
 };
 
 const values = [
@@ -39,6 +50,7 @@ const values = [
 export default function AboutPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <JsonLd data={breadcrumbSchema} />
       <Navbar />
 
       <main className="flex-1">

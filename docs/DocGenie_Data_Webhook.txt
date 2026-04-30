@@ -1,0 +1,68 @@
+Header Authorization webhook:
+key: x-api-key
+value: N8N_API_KEY set in .env.local
+
+
+DocGenie Get User Documents:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/184e3718-43d6-474b-b4e7-224125fe1ca4
+Type: POST
+
+Body:
+{
+  "event_type": "get_user_documents",
+  "user_id": "b0f97a7f-e8a1-db7a-14ff-64752da7e5c4"
+}
+
+Responses:
+
+Successful Response:
+[
+    {
+        "file_id": "a87ee13a-a0ce-4f70-bbc3-9ec6577e798a",
+        "file_name": "Elon_Bio.pdf",
+        "mime_type": "application/pdf",
+        "file_size": "88563",
+        "file_base64": ""
+     },
+    {
+        "file_id": "16f44fa8-5c02-459a-8dfb-c39097a3d55d",
+        "file_name": "employee_data.csv",
+        "mime_type": "text/csv",
+        "file_size": "1650",
+        "file_base64": ""
+     }
+]
+
+
+
+DocGenie Get Session Chat History:
+---------------------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/184e3718-43d6-474b-b4e7-224125fe1ca4
+Type: POST
+
+Body:
+{
+  "event_type": "get_session_chat_history",
+  "user_id": "user_3Bfvy4n08TekJirHdlLJa7XYF91",
+  "session_id": "6afbbfba-d869-4fc7-ba1d-57f787053513"
+}
+
+Responses:
+
+Successful Response:
+[
+  {
+    "id": "32",
+    "session_id": "6afbbfba-d869-4fc7-ba1d-57f787053513",
+    "user_id": "user_3Bfvy4n08TekJirHdlLJa7XYF91",
+    "user_message": "What is the hire date of employee named Nancy Lewis?",
+    "ai_response": "\"Nancy Lewis’s hire date is **1/8/2022**.\"",
+    "chat_title": "Nancy Lewis hire date",
+    "reaction": null,
+    "created_at": "2026-04-08T12:32:06.534Z",
+    "updated_at": "2026-04-08T12:32:13.701Z"
+  }
+]

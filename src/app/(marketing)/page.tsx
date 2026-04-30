@@ -1,12 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
 import { ContactDialog } from "@/components/marketing/contact-dialog";
+import { JsonLd } from "@/components/seo/json-ld";
 import {
   ArrowRight,
   Check,
+  ChevronDown,
   FileText,
   MessageSquare,
   BookOpen,
@@ -14,6 +17,15 @@ import {
   Sparkles,
   LayoutList,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "DocGenie — Chat With Your Documents Using AI",
+  description:
+    "Upload PDFs, Word docs, spreadsheets, or text files and ask questions in plain English. DocGenie uses AI to find answers instantly — no more searching through pages.",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 /* ─── Animation styles (CSS-only, server-component safe) ───────────── */
 const animStyles = `
@@ -161,11 +173,69 @@ const plans = [
   },
 ];
 
+/* ─── FAQ ──────────────────────────────────────────────────────────── */
+const faqs = [
+  {
+    q: "What file types does DocGenie support?",
+    a: "DocGenie supports PDF (.pdf), Microsoft Word (.docx), plain text (.txt), and CSV spreadsheet (.csv) files — up to 5 MB per document.",
+  },
+  {
+    q: "How long does it take to process a document?",
+    a: "Documents are indexed and ready to chat with in seconds after uploading.",
+  },
+  {
+    q: "Is my data private and secure?",
+    a: "Yes. Your documents are processed securely over HTTPS and never shared with third parties. You can delete your documents at any time from the dashboard.",
+  },
+  {
+    q: "How does the credit system work?",
+    a: "Every new account receives 5 document credits (one per upload) and 25 message credits (one per AI response) completely free. Additional credits are available on paid plans.",
+  },
+  {
+    q: "Can I have multiple chat sessions?",
+    a: "Yes. You can create as many chat sessions as you like across all your uploaded documents. Each session keeps its full message history.",
+  },
+  {
+    q: "Does DocGenie work on mobile?",
+    a: "Yes, DocGenie is fully responsive and works on any modern smartphone or tablet browser.",
+  },
+];
+
+/* ─── Structured data ───────────────────────────────────────────────── */
+const softwareAppSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "DocGenie",
+  url: "https://docgenie.zeeshanai.cloud",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "AI-powered document Q&A. Upload PDFs, Word docs, spreadsheets, or text files and get instant answers using AI.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free tier: 5 document credits + 25 message credits",
+  },
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map(({ q, a }) => ({
+    "@type": "Question",
+    name: q,
+    acceptedAnswer: { "@type": "Answer", text: a },
+  })),
+};
+
 /* ─── Page ─────────────────────────────────────────────────────────── */
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <style>{animStyles}</style>
+      <JsonLd data={softwareAppSchema} />
+      <JsonLd data={faqSchema} />
       <Navbar />
 
       <main className="flex-1">
@@ -530,6 +600,35 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ───────────────────────────────────────────────────── */}
+        <section id="faq" className="px-4 py-20">
+          <div className="container mx-auto max-w-3xl">
+            <div className="mb-12 text-center">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                FAQ
+              </p>
+              <h2
+                className="mt-3 text-3xl tracking-tight md:text-4xl"
+                style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
+              >
+                Frequently asked questions
+              </h2>
+            </div>
+
+            <div className="divide-y divide-border">
+              {faqs.map(({ q, a }) => (
+                <details key={q} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-medium [&::-webkit-details-marker]:hidden">
+                    {q}
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{a}</p>
+                </details>
               ))}
             </div>
           </div>

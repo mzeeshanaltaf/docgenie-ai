@@ -1,0 +1,27 @@
+Header Authorization webhook:
+key: x-api-key
+value: N8N_API_KEY set in .env.local
+
+DocGenie Title Generator:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/f3763ef6-e21b-49a6-aad5-6302bb47a1c7
+Type: POST
+
+Body:
+{
+  "user_query": "How many employees have a performance rating of 3?",
+  "user_id": "b0f97a7f-e8a1-db7a-14ff-64752da7e5c4",
+  "session_id": "a0f97a7f-c8a2-cc7a-24fc-54732db9e3d9"
+}
+
+Responses:
+
+Successful Response:
+[
+  {
+    "output": {
+      "title": "Salary for Employee 1007"
+    }
+  }
+]

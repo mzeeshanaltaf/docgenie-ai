@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/marketing/navbar";
 import { Footer } from "@/components/marketing/footer";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "DocGenie Privacy Policy — how we collect, use, and protect your data.",
+  alternates: { canonical: "/privacy" },
+};
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://docgenie.zeeshanai.cloud" },
+    { "@type": "ListItem", position: 2, name: "Privacy Policy", item: "https://docgenie.zeeshanai.cloud/privacy" },
+  ],
 };
 
 const sections = [
@@ -67,6 +78,7 @@ const sections = [
 export default function PrivacyPage() {
   return (
     <div className="flex min-h-screen flex-col">
+      <JsonLd data={breadcrumbSchema} />
       <Navbar />
 
       <main className="flex-1">

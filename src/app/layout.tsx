@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
+import { JsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
 
 const geist = Geist({
@@ -37,6 +38,25 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#020817" },
+  ],
+};
+
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "DocGenie",
+  url: "https://docgenie.zeeshanai.cloud",
+  logo: "https://docgenie.zeeshanai.cloud/icon.png",
+  description:
+    "AI-powered document Q&A platform. Upload PDFs, Word docs, spreadsheets, and text files and get instant AI-powered answers.",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,6 +72,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <JsonLd data={organizationSchema} />
             {children}
           </ThemeProvider>
         </body>

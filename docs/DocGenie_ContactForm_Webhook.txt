@@ -1,0 +1,26 @@
+Header Authorization webhook:
+key: x-api-key
+value: N8N_API_KEY set in .env.local
+
+
+DocGenie Contact Form:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/66552b4c-f727-4e71-baf4-32678b38d741
+Type: POST
+
+Body:
+{
+  "name": "Zeeshan",
+  "email": "zeeshan.altaf@gmail.com",
+  "message": "Hello"
+}
+
+Responses:
+
+Successful Response:
+{
+  "success": true,
+  "status": "CONTACT_SUBMITTED",
+  "message": "Your message has been received successfully"
+} 

@@ -1,0 +1,60 @@
+Header Authorization webhook:
+key: x-api-key
+value: N8N_API_KEY set in .env.local
+
+DocGenie Ingestion:
+-------------------
+
+Webhook URL: https://n8n.zeeshanai.cloud/webhook/4644696a-0879-482b-abfa-a4b16735fc1f
+Type: POST
+
+Body:
+user_id="user_id" 
+file=@"/E:\Projects\n8n\Projects\Doc Genie\Sample Docs/black_holes.pdf"
+
+Responses:
+
+If document processed successfully
+{
+  "success": true,
+  "status": "DOCUMENT_PROCESSED",
+  "message": "Document processed successfully"
+} 
+
+Insufficient Credit Balance:
+{
+  "success": false,
+  "status": "INSUFFICIENT_CREDITS",
+  "message": "Your current credit balance is insufficient to process this request"
+} 
+
+File too large:
+{
+  "success": false,
+  "status": "FILE_TOO_LARGE",
+  "message": "File size exceeds 5MB limit"
+}
+
+Duplicate Document:
+{
+  "success": false,
+  "status": "DUPLICATE_DOCUMENT",
+  "message": "A document with this ID or hash already exists",
+  "details": {
+    "existing_document_name": {{ JSON.stringify($json.file_name) }}
+  }
+} 
+
+Page limit exceeded:
+{
+  "success": false,
+  "status": "PAGE_LIMIT_EXCEEDED",
+  "message": "Document exceeds the maximum allowed page count",
+  "details": {
+    "current_pages": {{ $json.numpages }},
+    "max_pages": 20
+  }
+} 
+
+
+
