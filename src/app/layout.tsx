@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { JsonLd } from "@/components/seo/json-ld";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geist = Geist({
@@ -74,6 +75,7 @@ export default function RootLayout({
           >
             <JsonLd data={organizationSchema} />
             {children}
+            <Analytics />
           </ThemeProvider>
         </body>
       </html>
