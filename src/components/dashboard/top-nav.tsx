@@ -1,7 +1,7 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import { Menu } from "lucide-react";
+import { UserMenu } from "@/components/user-menu";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -46,7 +46,7 @@ export function TopNav() {
       <div className="flex items-center gap-3">
         <CreditDisplay />
         <ThemeToggle />
-        <UserButton />
+        <UserMenu />
       </div>
     </header>
   );
