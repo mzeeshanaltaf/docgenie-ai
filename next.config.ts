@@ -18,6 +18,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Produce a self-contained .next/standalone server for a lean Docker image
+  // (used by the Coolify deployment on the Hostinger VPS).
+  output: "standalone",
+
   // Hides the Next.js dev-tools indicator (the N logo in the bottom-left corner)
   devIndicators: false,
 

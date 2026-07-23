@@ -1,35 +1,107 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { callN8nWebhook } from "@/lib/n8n";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const WEBHOOK_ID = process.env.N8N_CONTACT_FORM_WEBHOOK_ID!;
 
+type Fields = {
+  name: string;
+  email: string;
+  message: string;
+  // Honeypot: a hidden, non-semantic field real users (and browser autofill)
+  // never fill. Bots that blindly fill every input populate it, letting us
+  // drop the submission silently.
+  hpField: string;
+};
+
+async function parseBody(req: NextRequest): Promise<Fields> {
+  const ct = req.headers.get("content-type") ?? "";
+  if (
+    ct.includes("application/x-www-form-urlencoded") ||
+    ct.includes("multipart/form-data")
+  ) {
+    const fd = await req.formData();
+    return {
+      name: ((fd.get("name") as string | null) ?? "").trim(),
+      email: ((fd.get("email") as string | null) ?? "").trim(),
+      message: ((fd.get("message") as string | null) ?? "").trim(),
+      hpField: ((fd.get("hp_field") as string | null) ?? "").trim(),
+    };
+  }
+  const body = await req.json();
+  return {
+    name: String(body.name ?? "").trim(),
+    email: String(body.email ?? "").trim(),
+    message: String(body.message ?? "").trim(),
+    hpField: String(body.hp_field ?? "").trim(),
+  };
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function clientIp(req: NextRequest): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? "anonymous";
+}
+
 export async function POST(req: NextRequest) {
+  // Native HTML form posts (the no-JS fallback) arrive url-encoded and expect a
+  // redirect; the React fetch path sends JSON and expects a JSON response.
+  const isFormPost = (req.headers.get("content-type") ?? "").includes(
+    "urlencoded"
+  );
+
+  const ok = (code = "1") =>
+    isFormPost
+      ? NextResponse.redirect(new URL(`/contact?sent=${code}`, req.url), 303)
+      : NextResponse.json({ success: true });
+
+  const fail = (error: string, status: number, message: string) =>
+    isFormPost
+      ? NextResponse.redirect(new URL(`/contact?error=${error}`, req.url), 303)
+      : NextResponse.json({ success: false, message }, { status });
+
+  let fields: Fields;
   try {
-    const { name, email, message } = await req.json();
+    fields = await parseBody(req);
+  } catch {
+    return fail("parse", 400, "Invalid submission. Please try again.");
+  }
 
-    if (!name || !email || !message) {
-      return Response.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+  const { name, email, message, hpField } = fields;
 
+  // Honeypot tripped -> pretend success so bots get no signal to adapt.
+  if (hpField) return ok();
+
+  if (!name || !email || !message) {
+    return fail("fields", 400, "Please fill in all fields.");
+  }
+  if (!EMAIL_RE.test(email)) {
+    return fail("email", 400, "Please enter a valid email address.");
+  }
+  if (message.length > 1000) {
+    return fail("length", 400, "Message must be 1000 characters or fewer.");
+  }
+
+  const { success: underLimit } = await checkRateLimit(clientIp(req));
+  if (!underLimit) {
+    return fail("rate", 429, "Too many submissions. Please try again later.");
+  }
+
+  try {
     const result = await callN8nWebhook<{ success: boolean }>(WEBHOOK_ID, {
       name,
       email,
       message,
     });
-
     if (!result.success) {
-      return Response.json({ error: "Submission failed" }, { status: 500 });
+      return fail("server", 502, "Could not send your message. Please try again later.");
     }
-
-    return Response.json({ ok: true });
   } catch (err) {
-    console.error("Contact route error:", err);
-    return Response.json(
-      { error: "Failed to send message" },
-      { status: 500 }
-    );
+    console.error("[contact] Webhook request failed:", err);
+    return fail("server", 502, "Could not send your message. Please try again later.");
   }
+
+  return ok();
 }

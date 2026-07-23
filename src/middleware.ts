@@ -1,18 +1,20 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
+// Optimistic gate: redirect unauthenticated visitors away from /dashboard.
+// This only checks for the presence of the session cookie (fast, edge-safe).
+// Full session validation happens in the API routes / server components,
+// which run on the Node runtime where the Postgres pool is available.
+export function middleware(req: NextRequest) {
+  const sessionCookie = getSessionCookie(req);
+  if (!sessionCookie) {
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("redirect", req.nextUrl.pathname);
+    return NextResponse.redirect(signInUrl);
   }
-});
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: [
-    // Skip Next.js internals and static files
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/dashboard/:path*"],
 };

@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import { BookOpen } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const anchor = (id: string) => (isHome ? `#${id}` : `/#${id}`);
+  const { data: session, isPending } = useSession();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/90 backdrop-blur-md">
@@ -30,6 +32,7 @@ export function Navbar() {
               ["Features", anchor("features")],
               ["How it works", anchor("how-it-works")],
               ["Pricing", anchor("pricing")],
+              ["Contact", "/contact"],
             ] as const
           ).map(([label, href]) => (
             <Link
@@ -45,25 +48,27 @@ export function Navbar() {
         {/* Right side */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button variant="ghost" size="sm">Sign in</Button>
-            </SignInButton>
-            <SignInButton mode="modal">
+          {isPending ? null : session ? (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              <UserMenu />
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
               <Button
+                asChild
                 size="sm"
                 className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
               >
-                Get started
+                <Link href="/sign-up">Get started</Link>
               </Button>
-            </SignInButton>
-          </SignedOut>
-          <SignedIn>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-            <UserButton />
-          </SignedIn>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -22,7 +22,7 @@ const sections = [
   {
     title: "1. Information we collect",
     body: [
-      "When you create an account, we collect your name and email address via our authentication provider (Clerk). We do not store your password directly.",
+      "When you create an account, we collect your name and email address. Passwords are stored only as salted, one-way hashes — we never store your password in plain text. You may also sign in with Google, in which case we receive your name, email address, and profile image from Google.",
       "When you use our document Q&A features, your uploaded documents are processed by our AI pipeline to enable question answering. Document content is indexed for retrieval during your session.",
       "We collect standard usage data such as pages visited, features used, and error logs to improve the service. This data is aggregated and not linked to personally identifiable information.",
     ],
@@ -46,7 +46,7 @@ const sections = [
   {
     title: "4. Third-party services",
     body: [
-      "We use Clerk for authentication and identity management. Clerk's privacy policy applies to data processed through their platform.",
+      "We use Google Sign-In as an optional authentication method. If you choose it, Google's privacy policy applies to the data processed during sign-in. Authentication is otherwise handled by our own systems on infrastructure we control.",
       "Our AI processing pipeline is powered by n8n workflows running on infrastructure we control. No document data is shared with external AI providers without your knowledge.",
       "We do not use third-party advertising networks or tracking pixels.",
     ],

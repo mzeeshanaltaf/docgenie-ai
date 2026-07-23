@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth-session";
 import { callN8nWebhook } from "@/lib/n8n";
 import type { DocumentRecord } from "@/types/n8n";
 
 const WEBHOOK_ID = process.env.N8N_PREVIEW_DOCUMENTS_WEBHOOK_ID!;
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   try {

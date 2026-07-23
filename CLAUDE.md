@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-This is a SaaS application built with Next.js (App Router) as the frontend, Clerk for authentication, and n8n workflows as the entire backend (via webhooks). All business logic, data storage, AI processing, and credit management lives in n8n — the Next.js app handles routing, auth, UI, and proxying requests to n8n.
+This is a SaaS application built with Next.js (App Router) as the frontend, Better Auth for authentication (email/password + Google OAuth, Postgres-backed), and n8n workflows as the entire backend (via webhooks). All business logic, data storage, AI processing, and credit management lives in n8n — the Next.js app handles routing, auth, UI, and proxying requests to n8n.
 
 ## Tech Stack
 
 - **Framework:** Next.js 16+ (App Router), React 19+, TypeScript (strict mode)
 - **Styling:** Tailwind CSS v4 (CSS-first config, no tailwind.config.ts), OKLCH color space
 - **UI Components:** shadcn/ui (Slate theme + accent color), CVA for variants
-- **Auth:** Clerk (`@clerk/nextjs`) — middleware-protected routes, `auth()` in API routes
+- **Auth:** Better Auth (`better-auth`) — Postgres adapter (`document_genie` schema), email/password + Google OAuth. Middleware guards `/dashboard`; API routes call `getUserId()` from `@/lib/auth-session`
 - **Backend:** n8n webhooks — JSON, streaming, and multipart endpoints
 - **Dark Mode:** next-themes (system-aware + manual toggle, `attribute="class"`)
 - **Toasts:** sonner (position: bottom-right, richColors)
@@ -30,12 +30,12 @@ src/
 │   │       ├── page.tsx    # Overview
 │   │       └── [feature]/  # Feature pages (documents, chat, settings, etc.)
 │   ├── api/                # API routes (proxy to n8n webhooks)
-│   │   ├── webhooks/clerk/ # Clerk webhook handler (signup credits, etc.)
+│   │   ├── auth/[...all]/   # Better Auth handler (all auth endpoints)
 │   │   └── [feature]/      # Feature-specific routes
-│   └── layout.tsx          # Root layout: ClerkProvider + ThemeProvider
+│   └── layout.tsx          # Root layout: ThemeProvider (no auth provider needed)
 ├── components/
 │   ├── dashboard/          # Sidebar, top-nav, credit-display, feature components
-│   ├── marketing/          # Navbar, footer, contact-dialog
+│   ├── marketing/          # Navbar, footer, auth-cta
 │   └── ui/                 # shadcn/ui primitives (do not edit manually)
 ├── contexts/
 │   └── dashboard-data.tsx  # DashboardDataProvider — single source of truth
@@ -66,10 +66,10 @@ All functions: POST to `N8N_WEBHOOK_BASE_URL/{webhookId}` with `x-api-key` heade
 Every API route follows this structure:
 
 ```typescript
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth-session";
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -80,6 +80,11 @@ export async function GET() {
   }
 }
 ```
+
+Auth config lives in `src/lib/auth.ts` (Better Auth server + Postgres pool pinned
+to the `document_genie` schema). Signup credits are granted in the
+`databaseHooks.user.create.after` hook (fires for email and Google signups).
+The client (`src/lib/auth-client.ts`) exposes `signIn`/`signUp`/`signOut`/`useSession`.
 
 Error responses: `{ error: string }` with appropriate status codes (400, 401, 500).
 
@@ -152,12 +157,20 @@ npx tsc --noEmit     # Type-check without emitting
 ## Environment Variables
 
 ```env
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
-CLERK_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+# Better Auth
+BETTER_AUTH_SECRET=...            # openssl rand -base64 32
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+DATABASE_URL=postgres://...       # tables live in the document_genie schema
+
+# Contact form rate limiting
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+
+# Analytics (build-time, NEXT_PUBLIC_*)
+NEXT_PUBLIC_UMAMI_SCRIPT_URL=...
+NEXT_PUBLIC_UMAMI_WEBSITE_ID=...
 
 # n8n Webhooks
 N8N_WEBHOOK_BASE_URL=https://your-n8n-instance.com/webhook
