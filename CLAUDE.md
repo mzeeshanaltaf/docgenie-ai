@@ -1,181 +1,99 @@
 # CLAUDE.md
 
-## Project Overview
+## Overview
 
-This is a SaaS application built with Next.js (App Router) as the frontend, Better Auth for authentication (email/password + Google OAuth, Postgres-backed), and n8n workflows as the entire backend (via webhooks). All business logic, data storage, AI processing, and credit management lives in n8n — the Next.js app handles routing, auth, UI, and proxying requests to n8n.
+Next.js 16 (App Router) SaaS. The frontend only handles routing, auth, and UI — **n8n webhooks are the entire backend** (data storage, AI processing, credits). Auth is **Better Auth** (email/password + Google OAuth, Postgres-backed). Production runs on self-hosted **Coolify** (Hostinger VPS), auto-deployed from `main` via GitHub Actions.
 
 ## Tech Stack
 
-- **Framework:** Next.js 16+ (App Router), React 19+, TypeScript (strict mode)
-- **Styling:** Tailwind CSS v4 (CSS-first config, no tailwind.config.ts), OKLCH color space
-- **UI Components:** shadcn/ui (Slate theme + accent color), CVA for variants
-- **Auth:** Better Auth (`better-auth`) — Postgres adapter (`document_genie` schema), email/password + Google OAuth. Middleware guards `/dashboard`; API routes call `getUserId()` from `@/lib/auth-session`
-- **Backend:** n8n webhooks — JSON, streaming, and multipart endpoints
-- **Dark Mode:** next-themes (system-aware + manual toggle, `attribute="class"`)
-- **Toasts:** sonner (position: bottom-right, richColors)
-- **Icons:** lucide-react
+- Next.js 16 (App Router), React 19, TypeScript (strict)
+- Tailwind v4 (CSS-first, no config file, OKLCH), shadcn/ui, CVA
+- Better Auth (`better-auth`) — Postgres adapter, `document_genie` schema
+- next-themes (`attribute="class"`), sonner (bottom-right, richColors), lucide-react
 
-## Project Structure
+## Structure
 
 ```
 src/
 ├── app/
-│   ├── (marketing)/        # Public pages — own layout with Navbar + Footer
-│   │   ├── page.tsx        # Landing page with anchor sections (#features, #pricing, etc.)
-│   │   ├── about/
-│   │   ├── privacy/
-│   │   └── terms/
-│   ├── (dashboard)/        # Protected pages — layout wraps with DashboardDataProvider
-│   │   └── dashboard/
-│   │       ├── page.tsx    # Overview
-│   │       └── [feature]/  # Feature pages (documents, chat, settings, etc.)
-│   ├── api/                # API routes (proxy to n8n webhooks)
-│   │   ├── auth/[...all]/   # Better Auth handler (all auth endpoints)
-│   │   └── [feature]/      # Feature-specific routes
-│   └── layout.tsx          # Root layout: ThemeProvider (no auth provider needed)
-├── components/
-│   ├── dashboard/          # Sidebar, top-nav, credit-display, feature components
-│   ├── marketing/          # Navbar, footer, auth-cta
-│   └── ui/                 # shadcn/ui primitives (do not edit manually)
-├── contexts/
-│   └── dashboard-data.tsx  # DashboardDataProvider — single source of truth
-├── lib/
-│   ├── n8n.ts              # Core webhook client (3 functions — see below)
-│   ├── n8n-*.ts            # Feature-specific n8n wrappers
-│   └── utils.ts            # cn() helper (clsx + tailwind-merge)
-└── types/
-    └── n8n.ts              # TypeScript types for all n8n request/response shapes
+│   ├── (marketing)/     # public; each page renders <Navbar/> + <Footer/> itself
+│   │   ├── page.tsx      # landing (anchor sections #features, #pricing, …)
+│   │   ├── sign-in, sign-up, contact, about, privacy, terms
+│   ├── (dashboard)/dashboard/   # protected; layout wraps DashboardDataProvider
+│   ├── api/             # proxy routes to n8n; api/auth/[...all] = Better Auth
+│   └── layout.tsx       # ThemeProvider + Umami/Vercel analytics (no auth provider)
+├── components/ (dashboard, marketing, contact, auth, ui, user-menu.tsx)
+├── contexts/dashboard-data.tsx   # DashboardDataProvider (single source of truth)
+├── lib/  (auth.ts, auth-client.ts, auth-session.ts, n8n*.ts, rate-limit.ts, utils.ts)
+└── types/n8n.ts
 ```
 
-## Architecture Patterns
+## Auth (Better Auth)
 
-### n8n Webhook Client (`src/lib/n8n.ts`)
+- Server `src/lib/auth.ts`: pg `Pool` pinned to `document_genie` via `search_path`; email/password (no verification) + Google. **Signup credits** granted in `databaseHooks.user.create.after` (fires for both email and Google signups) → `signupCredits(user.id)`.
+- Client `src/lib/auth-client.ts` exposes `signIn`/`signUp`/`signOut`/`useSession`.
+- `src/middleware.ts` guards `/dashboard(.*)` via session cookie → redirects to `/sign-in`.
+- API routes resolve the user with `getUserId()` from `@/lib/auth-session` (never Clerk).
 
-Three functions — use the right one for each scenario:
+## n8n Backend (`src/lib/n8n.ts`)
 
-| Function | Use Case | Content-Type |
-|----------|----------|-------------|
-| `callN8nWebhook<T>(webhookId, payload)` | Standard JSON request/response | `application/json` |
-| `callN8nWebhookStream(webhookId, payload)` | Streaming responses (chat) | `application/json` |
-| `callN8nWebhookMultipart<T>(webhookId, formData)` | File uploads | **Do NOT set** (auto) |
+- `callN8nWebhook<T>(id, payload)` (JSON), `callN8nWebhookStream(id, payload)` (chat), `callN8nWebhookMultipart<T>(id, formData)` (uploads — **never set Content-Type**).
+- All POST to `N8N_WEBHOOK_BASE_URL/{id}` with `x-api-key`. Pass the user as `user_id` in the payload (= Better Auth `user.id`).
+- Responses are often `[{…}]` → `Array.isArray(d) ? d[0] : d`. Coerce numbers `Number(v ?? 0)`. Filter arrays with type guards before use.
+- **Streaming** = newline-delimited JSON: take `content` from `type:"item"` events on the AI Agent node; the `"Respond to Webhook"` node emits the final JSON (parse its `content`).
 
-All functions: POST to `N8N_WEBHOOK_BASE_URL/{webhookId}` with `x-api-key` header.
-
-### API Route Pattern
-
-Every API route follows this structure:
+## API Route Pattern
 
 ```typescript
 import { getUserId } from "@/lib/auth-session";
-
 export async function GET() {
   const userId = await getUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const data = await n8nFunction(userId);
-    return Response.json(data);
-  } catch {
-    return Response.json({ error: "Failed to fetch" }, { status: 500 });
-  }
+  try { return Response.json(await n8nFn(userId)); }
+  catch { return Response.json({ error: "Failed" }, { status: 500 }); }
 }
 ```
 
-Auth config lives in `src/lib/auth.ts` (Better Auth server + Postgres pool pinned
-to the `document_genie` schema). Signup credits are granted in the
-`databaseHooks.user.create.after` hook (fires for email and Google signups).
-The client (`src/lib/auth-client.ts`) exposes `signIn`/`signUp`/`signOut`/`useSession`.
+## Dashboard Data
 
-Error responses: `{ error: string }` with appropriate status codes (400, 401, 500).
+`DashboardDataProvider` fetches all user data once on mount and exposes `refreshAll()`. **Always call `refreshAll()` after any credit/data-changing action** (upload, delete, chat message) or the navbar, sidebar credit display, and overview go stale.
 
-### Dashboard Data Context
+## Contact Form
 
-`DashboardDataProvider` wraps the entire dashboard layout. It:
-- Fetches **all** user data in a single consolidated webhook call on mount
-- Exposes `refreshAll()` — call this after ANY credit/data-changing action
-- Uses AbortController for cleanup on unmount
-- Provides: documents, chat sessions, credit/message balances, transaction history
+`/contact` posts to `/api/contact`: honeypot field `hp_field` (non-semantic name so autofill ignores it — drop the submission if filled) + Upstash per-IP rate limit (`src/lib/rate-limit.ts`, fails open if unset). Progressive enhancement (native POST + fetch, 303 redirect for no-JS).
 
-**Critical:** After upload, delete, chat message, or any action that changes credits, always call `refreshAll()` so the navbar, sidebar, and overview page stay in sync.
+## Deployment (Coolify)
 
-### n8n Streaming Protocol
+- Coolify app on the Hostinger VPS, built from the `Dockerfile` (`output: "standalone"`); container **health check needs `curl` in the image**, port 3000.
+- Push to `main` → `.github/workflows/deploy.yml` triggers a Coolify deploy (repo secrets `COOLIFY_API_TOKEN`, `COOLIFY_APP_UUID`). No Coolify git webhook.
+- In Coolify, all `NEXT_PUBLIC_*` and `DATABASE_URL` must be **build-time** env.
+- Umami analytics: `next/script` in root layout, gated on `NEXT_PUBLIC_UMAMI_*`.
 
-n8n streams newline-delimited JSON objects. Parse them like this:
+## Styling
 
-```
-{ "type": "begin", "metadata": { "nodeName": "AI Agent", ... } }
-{ "type": "item", "content": "Hello", "metadata": { "nodeName": "AI Agent", ... } }
-{ "type": "item", "content": " world", "metadata": { "nodeName": "AI Agent", ... } }
-{ "type": "end", "metadata": { "nodeName": "AI Agent", ... } }
-{ "type": "item", "content": "{\"output\":\"Hello world\"}", "metadata": { "nodeName": "Respond to Webhook", ... } }
-```
+Emerald accent: `bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400`. Active nav: `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400`. Focus: `focus-visible:ring-emerald-500/50`. Dark mode via OKLCH vars in `globals.css`. Icons from lucide-react.
 
-- Extract `content` from `type: "item"` events where `nodeName` is the AI agent
-- The `"Respond to Webhook"` node sends the final JSON output — parse its `content` as JSON
-- Use the webhook output as the definitive response; fall back to accumulated streamed text
+## Pitfalls
 
-### Session Management
-
-Chat session IDs are generated **client-side** via `crypto.randomUUID()`. The n8n backend creates the session record on the first message — no separate "create session" API needed.
-
-### Multipart File Uploads
-
-When uploading files via `callN8nWebhookMultipart`:
-- **Never** set the `Content-Type` header manually — `fetch` auto-sets the multipart boundary
-- Validate file type and size on both client and server
-- Build a new `FormData`, append the file and `user_id`, then pass to the function
-
-## Styling Conventions
-
-- **Accent color:** Emerald — `bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400`
-- **Active nav items:** `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400`
-- **Muted backgrounds:** `bg-muted/30`, `bg-muted/50`
-- **Dark mode:** OKLCH color variables in `globals.css` under `:root` and `.dark`
-- **Focus rings:** `focus-visible:ring-emerald-500/50`
-- **Icons:** Always from `lucide-react`, consistent sizing within a component
-
-## Common Pitfalls
-
-1. **Multipart Content-Type:** Never set it manually. Fetch handles the boundary.
-2. **n8n array wrapping:** Responses are often `[{ ... }]`. Always: `Array.isArray(data) ? data[0] : data`
-3. **String numbers from n8n:** Coerce with `Number(val ?? 0)` — don't assume numeric fields are numbers.
-4. **Anchor links from non-home pages:** Footer/navbar links to landing sections must use `/#features` not `#features`, otherwise they resolve as `/current-page#features`.
-5. **Scroll containers:** Radix `ScrollArea` can fail if the parent doesn't have `overflow-hidden` and proper flex height. Use native `overflow-y-auto` as a fallback.
-6. **Stale dashboard data:** Always call `refreshAll()` after credit-consuming actions. The navbar, sidebar credit display, and overview page all read from the same context.
-7. **Streaming is not raw text:** n8n streams newline-delimited JSON events. Must parse each line as JSON and extract `content` from `type: "item"` events.
-8. **Bot protection:** Public-facing forms (contact, etc.) should have math captcha or similar protection.
-9. **Type guards for n8n data:** Always filter arrays before use: `.filter((r): r is Type => !!r.required_field)`
+- Multipart: never set `Content-Type` manually (fetch sets the boundary).
+- Anchor links from non-home pages must be `/#features`, not `#features`.
+- Chat session IDs are client-side `crypto.randomUUID()`; n8n creates the record on the first message.
+- Client-only state (random IDs, browser APIs) causes hydration mismatch → wrap the top client component in `next/dynamic` with `{ ssr: false }`.
+- react-pdf/pdfjs need the `canvas` alias for **both** turbopack and webpack in `next.config.ts` (+ root `canvas-stub.js`).
 
 ## Commands
 
 ```bash
-npm run dev          # Start dev server (http://localhost:3000)
-npm run build        # Production build
-npx tsc --noEmit     # Type-check without emitting
+npm run dev        # localhost:3000
+npm run build      # production build (standalone output)
+npx tsc --noEmit   # type-check only
 ```
 
 ## Environment Variables
 
-```env
-# Better Auth
-BETTER_AUTH_SECRET=...            # openssl rand -base64 32
-BETTER_AUTH_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-DATABASE_URL=postgres://...       # tables live in the document_genie schema
-
-# Contact form rate limiting
-UPSTASH_REDIS_REST_URL=...
-UPSTASH_REDIS_REST_TOKEN=...
-
-# Analytics (build-time, NEXT_PUBLIC_*)
-NEXT_PUBLIC_UMAMI_SCRIPT_URL=...
-NEXT_PUBLIC_UMAMI_WEBSITE_ID=...
-
-# n8n Webhooks
-N8N_WEBHOOK_BASE_URL=https://your-n8n-instance.com/webhook
-N8N_API_KEY=your_api_key
-N8N_[FEATURE]_WEBHOOK_ID=uuid    # One per n8n workflow
-```
-
-Naming: `NEXT_PUBLIC_*` for client-exposed values. All others are server-only. Group by service. Webhook IDs follow `N8N_[FEATURE_NAME]_WEBHOOK_ID` pattern.
+- **Better Auth:** `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DATABASE_URL` (tables in `document_genie`).
+- **Rate limiting:** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
+- **Analytics (build-time):** `NEXT_PUBLIC_UMAMI_SCRIPT_URL`, `NEXT_PUBLIC_UMAMI_WEBSITE_ID`.
+- **n8n:** `N8N_WEBHOOK_BASE_URL`, `N8N_API_KEY`, `N8N_[FEATURE]_WEBHOOK_ID` (one per workflow).
+- **Deploy:** `COOLIFY_API_TOKEN` (root, API/MCP), `COOLIFY_DEPLOY_TOKEN` (GitHub secret value).
+- `NEXT_PUBLIC_*` are client-exposed at build time; everything else is server-only.

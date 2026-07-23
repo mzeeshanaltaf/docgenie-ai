@@ -24,7 +24,7 @@ const sections = [
     body: [
       "When you create an account, we collect your name and email address. Passwords are stored only as salted, one-way hashes — we never store your password in plain text. You may also sign in with Google, in which case we receive your name, email address, and profile image from Google.",
       "When you use our document Q&A features, your uploaded documents are processed by our AI pipeline to enable question answering. Document content is indexed for retrieval during your session.",
-      "We collect standard usage data such as pages visited, features used, and error logs to improve the service. This data is aggregated and not linked to personally identifiable information.",
+      "We use a self-hosted, privacy-friendly analytics tool (Umami) to collect aggregate usage data such as pages visited, referrers, and approximate location, device, and browser type. This data is anonymous, collected without cookies, and is not linked to your identity or personal account.",
     ],
   },
   {
@@ -48,13 +48,13 @@ const sections = [
     body: [
       "We use Google Sign-In as an optional authentication method. If you choose it, Google's privacy policy applies to the data processed during sign-in. Authentication is otherwise handled by our own systems on infrastructure we control.",
       "Our AI processing pipeline is powered by n8n workflows running on infrastructure we control. No document data is shared with external AI providers without your knowledge.",
-      "We do not use third-party advertising networks or tracking pixels.",
+      "Our website analytics are powered by Umami, a privacy-first analytics tool we self-host on our own infrastructure. It is cookieless, does not track you across other websites, and does not collect personally identifiable information. We do not use third-party advertising networks or tracking pixels.",
     ],
   },
   {
     title: "5. Cookies",
     body: [
-      "We use strictly necessary session cookies to keep you logged in. We do not use tracking cookies or third-party marketing cookies.",
+      "We use strictly necessary session cookies to keep you logged in. We do not use tracking cookies or third-party marketing cookies, and our analytics (Umami) operates entirely without cookies.",
       "You can disable cookies in your browser settings, but this may prevent you from logging in to the application.",
     ],
   },
@@ -70,7 +70,7 @@ const sections = [
     title: "7. Changes to this policy",
     body: [
       "We may update this Privacy Policy from time to time. We will notify you of material changes by email or by displaying a notice in the application. Continued use of the service after changes constitutes acceptance of the updated policy.",
-      "This policy was last updated on 9 March 2026.",
+      "This policy was last updated on 23 July 2026.",
     ],
   },
 ];

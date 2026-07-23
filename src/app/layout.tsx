@@ -3,7 +3,6 @@ import { Geist } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { JsonLd } from "@/components/seo/json-ld";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Self-hosted Umami analytics. NEXT_PUBLIC_* → inlined at BUILD time, so these
@@ -80,7 +79,6 @@ export default function RootLayout({
         >
           <JsonLd data={organizationSchema} />
           {children}
-          <Analytics />
         </ThemeProvider>
         {umamiScriptUrl && umamiWebsiteId && (
           <Script

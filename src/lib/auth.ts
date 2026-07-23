@@ -47,11 +47,9 @@ export const auth = betterAuth({
     },
   },
 
-  // CSRF/redirect whitelist: local dev, the temporary Coolify subdomain used
-  // during migration, and the production domain.
+  // CSRF/redirect whitelist: local dev and the production domain.
   trustedOrigins: [
     "http://localhost:3000",
-    "https://docgenie-new.zeeshanai.cloud",
     "https://docgenie.zeeshanai.cloud",
   ],
 });

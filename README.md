@@ -34,7 +34,7 @@ An AI-powered SaaS application that lets users upload documents and chat with th
 
 - **Frontend:** Next.js 16 (App Router), TypeScript, React 19, Tailwind CSS v4
 - **UI Components:** shadcn/ui (Slate theme + Emerald accent)
-- **Auth:** Clerk
+- **Auth:** Better Auth (email/password + Google OAuth, Postgres-backed)
 - **Backend:** n8n webhooks (AI processing, data storage, credit management)
 - **State Management:** React Context API (`DashboardDataProvider`)
 - **Dark Mode:** next-themes (system-aware + manual toggle)
@@ -61,9 +61,9 @@ src/
 │   │   ├── chat/             # Message, title, history
 │   │   ├── analytics/        # User statistics
 │   │   ├── credits/          # Balance & history
-│   │   ├── contact/          # Contact form
-│   │   └── webhooks/         # Clerk webhook handler
-│   └── layout.tsx            # Root layout with Clerk & theme providers
+│   │   ├── contact/          # Contact form (honeypot + Upstash rate limit)
+│   │   └── auth/[...all]/    # Better Auth handler
+│   └── layout.tsx            # Root layout with theme provider + analytics
 ├── components/
 │   ├── dashboard/
 │   │   ├── documents/        # Upload + list components
@@ -86,7 +86,9 @@ src/
 │   └── n8n-delete.ts         # deleteDocuments
 ├── types/
 │   └── n8n.ts                # TypeScript types for all n8n responses
-└── middleware.ts             # Clerk auth middleware
+├── lib/auth.ts               # Better Auth server config (Postgres, Google, hooks)
+├── lib/auth-client.ts        # Better Auth React client
+└── middleware.ts             # Session-cookie guard for /dashboard
 ```
 
 ## Architecture
@@ -119,10 +121,12 @@ Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the
 
 ### Prerequisites
 
-- Node.js 18+ (LTS recommended)
+- Node.js 20+ (LTS recommended)
 - npm
-- Clerk account (free tier)
-- n8n instance with 8 configured webhook workflows
+- A PostgreSQL database (Better Auth tables live in the `document_genie` schema)
+- Google OAuth credentials (for "Continue with Google")
+- Upstash Redis (contact-form rate limiting)
+- n8n instance with the configured webhook workflows
 
 ### Installation
 
@@ -144,10 +148,20 @@ Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the
 
    Fill in your credentials:
    ```env
-   # Clerk (get from https://dashboard.clerk.com)
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-   CLERK_SECRET_KEY=sk_test_...
-   CLERK_WEBHOOK_SECRET=whsec_...
+   # Better Auth (openssl rand -base64 32 for the secret)
+   BETTER_AUTH_SECRET=...
+   BETTER_AUTH_URL=http://localhost:3000
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   DATABASE_URL=postgres://user:pass@host:5432/db
+
+   # Contact form rate limiting (Upstash)
+   UPSTASH_REDIS_REST_URL=...
+   UPSTASH_REDIS_REST_TOKEN=...
+
+   # Analytics (Umami — build-time)
+   NEXT_PUBLIC_UMAMI_SCRIPT_URL=...
+   NEXT_PUBLIC_UMAMI_WEBSITE_ID=...
 
    # n8n
    N8N_WEBHOOK_BASE_URL=https://your-n8n-instance.com/webhook
@@ -195,7 +209,7 @@ npm start
 
 ### Other
 - `POST /api/contact` — Contact form submission
-- `POST /api/webhooks/clerk` — Clerk user lifecycle events (issues signup credits)
+- `GET|POST /api/auth/[...all]` — Better Auth endpoints (sign-in/up, session, OAuth). Signup credits are granted in a Better Auth `user.create.after` hook.
 
 ## n8n Webhook Contract
 
@@ -257,19 +271,23 @@ Maximum file size: **5MB per document**
 
 ## Deployment
 
-### Vercel (Recommended)
+### Coolify on a VPS (current production)
+
+Production runs on a self-hosted [Coolify](https://coolify.io) instance
+(Hostinger VPS), deployed from a `Dockerfile` (Next.js `output: "standalone"`).
 
 ```bash
 git push origin main
-# Vercel auto-deploys on push to main
+# GitHub Actions (.github/workflows/deploy.yml) triggers a Coolify deploy
 ```
 
-Add all environment variables in Vercel Dashboard → Settings → Environment Variables.
-
-Configure Clerk webhook URL to point to your deployed domain:
-```
-https://your-domain.com/api/webhooks/clerk
-```
+- Set all environment variables in the Coolify app (Configuration → Environment
+  Variables). Mark every `NEXT_PUBLIC_*` and `DATABASE_URL` as **build-time**.
+- Auto-deploy needs two repo secrets: `COOLIFY_API_TOKEN` (deploy-scoped) and
+  `COOLIFY_APP_UUID`.
+- The container health check requires `curl` in the image (already in the
+  `Dockerfile`); set the health-check port to `3000`.
+- Google OAuth redirect URI: `https://<your-domain>/api/auth/callback/google`.
 
 ### Self-hosted
 
