@@ -86,6 +86,7 @@ Emerald accent: `bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:te
 ## Pitfalls
 
 - Multipart: never set `Content-Type` manually (fetch sets the boundary).
+- **Never quote env values in Coolify.** dotenv strips surrounding quotes locally; Coolify passes them through verbatim, so `FOO="bar"` reaches the container as `"bar"` with literal quotes. This shipped a broken `RESEND_FROM_EMAIL` once (Resend 422 `validation_error` on the `from` field) — `lib/email.ts` now strips them defensively, but the value itself should be unquoted.
 - Anchor links from non-home pages must be `/#features`, not `#features`.
 - Chat session IDs are client-side `crypto.randomUUID()`; n8n creates the record on the first message.
 - Client-only state (random IDs, browser APIs) causes hydration mismatch → wrap the top client component in `next/dynamic` with `{ ssr: false }`.

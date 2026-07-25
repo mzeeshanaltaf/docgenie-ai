@@ -171,9 +171,10 @@ Google sign-ins arrive already verified and skip the flow entirely.
    GOOGLE_CLIENT_SECRET=...
    DATABASE_URL=postgres://user:pass@host:5432/db
 
-   # Email (Resend) — the from-domain must be verified in Resend
+   # Email (Resend) — the from-domain must be verified in Resend.
+   # Leave the from-address unquoted; Coolify does not strip quotes.
    RESEND_API_KEY=re_...
-   RESEND_FROM_EMAIL="DocGenie <noreply@verification.example.com>"
+   RESEND_FROM_EMAIL=DocGenie <noreply@verification.example.com>
 
    # Contact form rate limiting (Upstash)
    UPSTASH_REDIS_REST_URL=...

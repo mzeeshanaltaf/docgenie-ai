@@ -11,10 +11,21 @@ import { OTP_SENDER_EMAIL } from "./constants";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * Strips surrounding quotes from an env value. dotenv removes them locally, but
+ * Coolify (and plain `docker run -e`) pass the raw string through — so a value
+ * pasted as `RESEND_FROM_EMAIL="Name <a@b.c>"` reaches the container with
+ * literal quote characters and Resend rejects it with a 422 validation_error.
+ */
+function unquote(value: string | undefined): string {
+  return (value ?? "").trim().replace(/^(['"])([\s\S]*)\1$/, "$2").trim();
+}
+
 // Must exactly match a verified Resend domain (verification.zeeshanai.cloud),
 // otherwise Resend rejects the send with 403. Defaults to the address the auth
 // screens tell users to look for, so the UI copy and the real sender agree.
-const FROM = process.env.RESEND_FROM_EMAIL || `DocGenie <${OTP_SENDER_EMAIL}>`;
+const FROM =
+  unquote(process.env.RESEND_FROM_EMAIL) || `DocGenie <${OTP_SENDER_EMAIL}>`;
 
 export type OtpEmailType = "email-verification" | "forget-password";
 
