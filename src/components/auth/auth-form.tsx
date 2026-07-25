@@ -24,6 +24,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const isSignUp = mode === "sign-up";
 
+  function verifyUrl() {
+    return `/verify-email?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirectTo)}`;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -33,9 +37,24 @@ export function AuthForm({ mode }: { mode: Mode }) {
         : await authClient.signIn.email({ email, password });
 
       if (error) {
+        // The account exists but hasn't been verified. The server already sent
+        // a fresh code (emailVerification.sendOnSignIn), so hand off to the
+        // verify screen instead of showing an error the user can't act on.
+        if (error.code === "EMAIL_NOT_VERIFIED") {
+          router.push(verifyUrl());
+          return;
+        }
         toast.error(error.message || "Something went wrong. Please try again.");
         return;
       }
+
+      if (isSignUp) {
+        // requireEmailVerification means sign-up issues no session — the user
+        // has to enter the emailed code before they get one.
+        router.push(verifyUrl());
+        return;
+      }
+
       router.push(redirectTo);
       router.refresh();
     } catch {
@@ -129,9 +148,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="password" className="text-sm font-medium">
+              Password
+            </label>
+            {!isSignUp && (
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+              >
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <Input
             id="password"
             type="password"

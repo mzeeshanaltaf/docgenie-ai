@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
+import { emailOTP } from "better-auth/plugins";
 import { Pool } from "pg";
 import { signupCredits } from "./n8n-credits";
+import { sendOtpEmail } from "./email";
 
 // Single pooled connection to the external Postgres. The `search_path` startup
 // option pins every connection to the `document_genie` schema, so Better Auth's
@@ -17,10 +19,19 @@ export const auth = betterAuth({
   // BETTER_AUTH_SECRET and BETTER_AUTH_URL are read from the environment.
   emailAndPassword: {
     enabled: true,
-    // No email provider is configured yet, so verification is off. Sign-up
-    // creates the account immediately. (Forgot-password requires an email
-    // sender and is intentionally out of scope until one is added.)
-    requireEmailVerification: false,
+    // Sign-up creates the account but NOT a session — the user has to enter the
+    // emailed OTP first. Existing accounts with emailVerified = false hit this
+    // on their next sign-in and are walked through the same flow.
+    requireEmailVerification: true,
+  },
+
+  emailVerification: {
+    // An unverified sign-in attempt gets a fresh code, so the user always has
+    // one waiting when we redirect them to /verify-email.
+    sendOnSignIn: true,
+    // Verifying the code issues the session, so the user lands straight on the
+    // dashboard instead of being bounced back to sign in.
+    autoSignInAfterVerification: true,
   },
 
   socialProviders: {
@@ -46,6 +57,31 @@ export const auth = betterAuth({
       },
     },
   },
+
+  plugins: [
+    emailOTP({
+      // Replaces Better Auth's link-based verification email with our OTP
+      // sender, so sign-up and unverified sign-in both emit a code.
+      overrideDefaultEmailVerification: true,
+      // Closes the plugin's passwordless /sign-in/email-otp path, which would
+      // otherwise create nameless, passwordless accounts for unknown emails.
+      disableSignUp: true,
+      otpLength: 6,
+      expiresIn: 600, // 10 minutes — keep in sync with the email copy.
+      allowedAttempts: 3,
+      // Codes are hashed in the `verification` table rather than stored plain.
+      storeOTP: "hashed",
+      // The plugin's own limiter guards the send endpoints (and the Resend
+      // spend). Don't reuse lib/rate-limit.ts here — its window and Redis
+      // prefix are hardcoded to the contact form and would share one bucket.
+      rateLimit: { window: 60, max: 3 },
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        // "sign-in" and "change-email" flows aren't exposed in the UI.
+        if (type !== "email-verification" && type !== "forget-password") return;
+        await sendOtpEmail(email, otp, type);
+      },
+    }),
+  ],
 
   // CSRF/redirect whitelist: local dev and the production domain.
   trustedOrigins: [

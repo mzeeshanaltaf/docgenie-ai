@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import { JsonLd } from "@/components/seo/json-ld";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 // Self-hosted Umami analytics. NEXT_PUBLIC_* → inlined at BUILD time, so these
@@ -79,6 +80,11 @@ export default function RootLayout({
         >
           <JsonLd data={organizationSchema} />
           {children}
+          {/* Mounted at the root, not per-group: the marketing pages (sign-in,
+              sign-up, verify-email, forgot-password, contact) report every
+              error through toast, and without a Toaster in scope those calls
+              render nothing at all. */}
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
         {umamiScriptUrl && umamiWebsiteId && (
           <Script

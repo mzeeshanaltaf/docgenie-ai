@@ -2,13 +2,14 @@
 
 ## Overview
 
-Next.js 16 (App Router) SaaS. The frontend only handles routing, auth, and UI — **n8n webhooks are the entire backend** (data storage, AI processing, credits). Auth is **Better Auth** (email/password + Google OAuth, Postgres-backed). Production runs on self-hosted **Coolify** (Hostinger VPS), auto-deployed from `main` via GitHub Actions.
+Next.js 16 (App Router) SaaS. The frontend only handles routing, auth, and UI — **n8n webhooks are the entire backend** (data storage, AI processing, credits); the one exception is transactional auth email, which goes through **Resend**. Auth is **Better Auth** (email/password with OTP verification + Google OAuth, Postgres-backed). Production runs on self-hosted **Coolify** (Hostinger VPS), auto-deployed from `main` via GitHub Actions.
 
 ## Tech Stack
 
 - Next.js 16 (App Router), React 19, TypeScript (strict)
 - Tailwind v4 (CSS-first, no config file, OKLCH), shadcn/ui, CVA
-- Better Auth (`better-auth`) — Postgres adapter, `document_genie` schema
+- Better Auth (`better-auth`) — Postgres adapter, `document_genie` schema, `emailOTP` plugin
+- Resend (`resend`) — transactional auth email only
 - next-themes (`attribute="class"`), sonner (bottom-right, richColors), lucide-react
 
 ## Structure
@@ -18,22 +19,31 @@ src/
 ├── app/
 │   ├── (marketing)/     # public; each page renders <Navbar/> + <Footer/> itself
 │   │   ├── page.tsx      # landing (anchor sections #features, #pricing, …)
-│   │   ├── sign-in, sign-up, contact, about, privacy, terms
+│   │   ├── sign-in, sign-up, verify-email, forgot-password
+│   │   ├── contact, about, privacy, terms
 │   ├── (dashboard)/dashboard/   # protected; layout wraps DashboardDataProvider
 │   ├── api/             # proxy routes to n8n; api/auth/[...all] = Better Auth
 │   └── layout.tsx       # ThemeProvider + Umami/Vercel analytics (no auth provider)
 ├── components/ (dashboard, marketing, contact, auth, ui, user-menu.tsx)
 ├── contexts/dashboard-data.tsx   # DashboardDataProvider (single source of truth)
-├── lib/  (auth.ts, auth-client.ts, auth-session.ts, n8n*.ts, rate-limit.ts, utils.ts)
+├── lib/  (auth.ts, auth-client.ts, auth-session.ts, email.ts, n8n*.ts, rate-limit.ts, utils.ts)
 └── types/n8n.ts
 ```
 
 ## Auth (Better Auth)
 
-- Server `src/lib/auth.ts`: pg `Pool` pinned to `document_genie` via `search_path`; email/password (no verification) + Google. **Signup credits** granted in `databaseHooks.user.create.after` (fires for both email and Google signups) → `signupCredits(user.id)`.
-- Client `src/lib/auth-client.ts` exposes `signIn`/`signUp`/`signOut`/`useSession`.
+- Server `src/lib/auth.ts`: pg `Pool` pinned to `document_genie` via `search_path`; email/password + Google. **Signup credits** granted in `databaseHooks.user.create.after` (fires for both email and Google signups) → `signupCredits(user.id)`.
+- Client `src/lib/auth-client.ts` exposes `signIn`/`signUp`/`signOut`/`useSession` + `emailOtp.*`.
 - `src/middleware.ts` guards `/dashboard(.*)` via session cookie → redirects to `/sign-in`.
 - API routes resolve the user with `getUserId()` from `@/lib/auth-session` (never Clerk).
+
+### Email OTP (`emailOTP` plugin + Resend)
+
+- `requireEmailVerification: true` — sign-up returns **no session**; the user must enter a 6-digit code. Unverified sign-in throws `EMAIL_NOT_VERIFIED` (and `sendOnSignIn` mails a fresh code), so `auth-form.tsx` redirects to `/verify-email?email=…&redirect=…`. `autoSignInAfterVerification` issues the session on success.
+- Codes: 6 digits, 10 min, 3 attempts, hashed at rest, 3 sends/60 s (the plugin's own `rateLimit` — **don't** reuse `lib/rate-limit.ts`, its window/prefix are hardcoded to the contact form). Stored in the existing `verification` table — **no migration needed**.
+- Client calls: `emailOtp.verifyEmail`, `.sendVerificationOtp`, `.requestPasswordReset` (not the deprecated `forgetPassword.emailOtp`), `.resetPassword`. `resetPassword` creates no session → push to `/sign-in`.
+- Sending lives in `src/lib/email.ts` (`sendOtpEmail`). The Resend SDK **returns `{ data, error }` and never throws** — check `error` explicitly. No idempotency key (codes rotate, a stable key would 409). `from` must exactly match the verified Resend domain. Send failures are logged by Better Auth and never surface to the UI, so debug via the server console + Resend dashboard.
+- `disableSignUp: true` closes the plugin's passwordless `/sign-in/email-otp` account-creation path.
 
 ## n8n Backend (`src/lib/n8n.ts`)
 
@@ -92,6 +102,7 @@ npx tsc --noEmit   # type-check only
 ## Environment Variables
 
 - **Better Auth:** `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DATABASE_URL` (tables in `document_genie`).
+- **Email:** `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (e.g. `DocGenie <noreply@verification.zeeshanai.cloud>` — the domain must be verified in Resend).
 - **Rate limiting:** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
 - **Analytics (build-time):** `NEXT_PUBLIC_UMAMI_SCRIPT_URL`, `NEXT_PUBLIC_UMAMI_WEBSITE_ID`.
 - **n8n:** `N8N_WEBHOOK_BASE_URL`, `N8N_API_KEY`, `N8N_[FEATURE]_WEBHOOK_ID` (one per workflow).

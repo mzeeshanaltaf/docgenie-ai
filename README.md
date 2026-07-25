@@ -34,7 +34,8 @@ An AI-powered SaaS application that lets users upload documents and chat with th
 
 - **Frontend:** Next.js 16 (App Router), TypeScript, React 19, Tailwind CSS v4
 - **UI Components:** shadcn/ui (Slate theme + Emerald accent)
-- **Auth:** Better Auth (email/password + Google OAuth, Postgres-backed)
+- **Auth:** Better Auth (email/password with OTP email verification + Google OAuth, Postgres-backed)
+- **Email:** Resend (auth OTP emails only)
 - **Backend:** n8n webhooks (AI processing, data storage, credit management)
 - **State Management:** React Context API (`DashboardDataProvider`)
 - **Dark Mode:** next-themes (system-aware + manual toggle)
@@ -86,8 +87,9 @@ src/
 │   └── n8n-delete.ts         # deleteDocuments
 ├── types/
 │   └── n8n.ts                # TypeScript types for all n8n responses
-├── lib/auth.ts               # Better Auth server config (Postgres, Google, hooks)
+├── lib/auth.ts               # Better Auth server config (Postgres, Google, emailOTP, hooks)
 ├── lib/auth-client.ts        # Better Auth React client
+├── lib/email.ts              # Resend sender + OTP email templates
 └── middleware.ts             # Session-cookie guard for /dashboard
 ```
 
@@ -117,6 +119,19 @@ UI updates via DashboardDataProvider context
 
 Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the session record on the first message — no separate "create session" API call required.
 
+### Email Verification & Password Reset
+
+Email/password accounts must verify their address before they get a session. Better Auth's `emailOTP`
+plugin issues a 6-digit code (10 min, 3 attempts, hashed in the existing `verification` table) and
+`lib/email.ts` delivers it through Resend.
+
+- **Sign-up** → `/verify-email` → code → signed in automatically.
+- **Sign-in on an unverified account** → a fresh code is mailed and the user is redirected to the
+  same screen.
+- **Forgot password** → `/forgot-password` → code + new password → back to `/sign-in`.
+
+Google sign-ins arrive already verified and skip the flow entirely.
+
 ## Getting Started
 
 ### Prerequisites
@@ -125,6 +140,7 @@ Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the
 - npm
 - A PostgreSQL database (Better Auth tables live in the `document_genie` schema)
 - Google OAuth credentials (for "Continue with Google")
+- A Resend account with a verified sending domain (auth OTP emails)
 - Upstash Redis (contact-form rate limiting)
 - n8n instance with the configured webhook workflows
 
@@ -154,6 +170,10 @@ Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the
    GOOGLE_CLIENT_ID=...
    GOOGLE_CLIENT_SECRET=...
    DATABASE_URL=postgres://user:pass@host:5432/db
+
+   # Email (Resend) — the from-domain must be verified in Resend
+   RESEND_API_KEY=re_...
+   RESEND_FROM_EMAIL="DocGenie <noreply@verification.example.com>"
 
    # Contact form rate limiting (Upstash)
    UPSTASH_REDIS_REST_URL=...
