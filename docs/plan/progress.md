@@ -15,7 +15,7 @@ _Last updated by: Phase 2 (done)_
 
 ### How to run locally
 - Frontend: `npm run dev` (localhost:3000)
-- MinIO (from the repo root): `docker compose -f docker-compose.dev.yml up -d` (starts MinIO and a one-shot job that creates the private buckets `docgenie` and `docgenie-test`). Stop with `docker compose -f docker-compose.dev.yml down` (data stays in the `docgenie-minio-data` volume).
+- MinIO (from the repo root): `docker compose --env-file backend/.env -f docker-compose.dev.yml up -d` (starts container `docgenie-dev-minio` and a one-shot job that creates the private buckets `docgenie` and `docgenie-test`; the root credentials and bucket name are read from the `S3_*` values in `backend/.env`, so the app and MinIO cannot drift; same layout as the ResuMatch / DocuMind dev setups). Stop with `docker compose -f docker-compose.dev.yml down` (data stays in the `docgenie-minio-data` volume). Production MinIO is a dedicated Coolify service, provisioned in Phase 11 like ResuMatch (`resumatch-minio`: no public domain, `coolify` network, bucket-scoped user).
 - Backend (from `backend/`):
   - install: `uv sync`
   - run: `uv run uvicorn app.main:app --port 8765`
@@ -40,7 +40,7 @@ _Last updated by: Phase 2 (done)_
 |---|---|---|---|
 | _existing vars are listed in `CLAUDE.md`_ | | | |
 | `DATABASE_URL`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `INTERNAL_API_KEY` | backend | `backend/.env` (gitignored; seeded from root `.env.local`, `INTERNAL_API_KEY` generated) | 1 |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` | backend | `backend/.env` (set to the local MinIO in Phase 2); `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` (optional) are read by `docker-compose.dev.yml` and must match the S3 key pair | 1 (set in 2) |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` | backend + `docker-compose.dev.yml` (via `--env-file backend/.env`) | `backend/.env` (set to the local MinIO in Phase 2) | 1 (set in 2) |
 | `CONTACT_NOTIFY_EMAIL` | backend | declared in `app/config.py` + `backend/.env.example`, not set yet (Phase 4) | 1 |
 | `TEST_S3_BUCKET` (optional) | pytest | overrides the test bucket (default `docgenie-test`); the suite also forces `DB_SCHEMA=docgenie_test_<random>` | 2 |
 | All tunables (`CHAT_MODEL`, `MAX_UPLOAD_MB`, `CHUNK_SIZE`, ...) | backend | defaults in `backend/app/config.py`; list in `backend/.env.example` | 1 |
@@ -169,14 +169,14 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
   - MinIO image is `pgsty/minio` and the host ports are 9100/9101 (see Decisions).
 - **Decisions made:** see Current state > Decisions (credits assumption confirmed, failed re-upload, delete-while-processing, age-based sweep, MinIO image/ports, test schema).
 - **Phase-specific handoff items:**
-  - *MinIO:* API 9100, console 9101, bucket `docgenie` (and `docgenie-test` for pytest), start with `docker compose -f docker-compose.dev.yml up -d`; env names `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` (values in `backend/.env`).
+  - *MinIO:* API 9100, console 9101, bucket `docgenie` (and `docgenie-test` for pytest), start with `docker compose --env-file backend/.env -f docker-compose.dev.yml up -d`; env names `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` (values in `backend/.env`).
   - *Public functions of `credits.py` / `storage.py`:* listed in Current state > Contracts.
   - *Ingestion `error_code` values:* `NO_TEXT_FOUND`, `PARSE_FAILED`, `OCR_FAILED`, `EMBEDDING_FAILED`, `TEXT_TOO_LARGE`, `PROCESSING_INTERRUPTED`, `INTERNAL_ERROR` (and the unused `STORAGE_FAILED`). Phase 8 maps them to readable messages. Upload-time errors are HTTP codes (see the endpoint table).
   - *Response shapes:* `backend/app/schemas/documents.py` (`DocumentOut`, `DocumentListOut`), summarised in Current state > HTTP endpoints.
   - *Test setup:* `tests/conftest.py` sets `DB_SCHEMA=docgenie_test_<random>` before the app imports, creates it with `Base.metadata.create_all` on the `DATABASE_URL` database, and drops it at the end; MinIO bucket `docgenie-test` is emptied at the end. Command: `uv run pytest -q` from `backend/` (MinIO container must be up).
   - *Re-grant script:* `backend/scripts/regrant_signup_credits.py`, run once on 2026-11-11: 4 existing users granted 5 + 25; a second run granted 0.
   - *Credits assumption:* confirmed by the user (5 + 25, 1 per upload and per turn).
-- **How to verify this phase still works:** `docker compose -f docker-compose.dev.yml up -d` (repo root); from `backend/`: `uv run pytest -q` (about 4 min); `uv run uvicorn app.main:app --port 8765`, then `curl -H "X-Internal-Key: <value from backend/.env>" localhost:8765/v1/health` (expect database and storage `ok`); optionally `PYTHONPATH=. uv run python scripts/e2e_ingest.py http://localhost:8765` (real OpenAI, a few cents).
+- **How to verify this phase still works:** `docker compose --env-file backend/.env -f docker-compose.dev.yml up -d` (repo root); from `backend/`: `uv run pytest -q` (about 4 min); `uv run uvicorn app.main:app --port 8765`, then `curl -H "X-Internal-Key: <value from backend/.env>" localhost:8765/v1/health` (expect database and storage `ok`); optionally `PYTHONPATH=. uv run python scripts/e2e_ingest.py http://localhost:8765` (real OpenAI, a few cents).
 - **Open issues / follow-ups:**
   - Phase 3: fill `PRICING` for `gpt-6-luna` (OCR cost is NULL until then); retrieval should query `document_chunks` filtered by `user_id` and `document_id`; for CSV documents the aggregate/SQL tool reads `document_rows` (`row_data` values are all strings, `csv_schema.columns[].type` says how to cast).
   - Phase 4: account deletion must call `storage.delete_prefix(storage.user_prefix(user_id))` and delete credit/usage rows by `user_id`; the dashboard endpoint needs balances (`credits.get_balances`).

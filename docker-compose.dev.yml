@@ -1,46 +1,57 @@
-# Local dev services. Start with: docker compose -f docker-compose.dev.yml up -d
+# Local development MinIO (NOT the production storage; that is a dedicated Coolify service, Phase 11).
 #
-# MinIO (S3-compatible object storage) for the FastAPI backend.
-#   API     -> http://localhost:9100   (S3_ENDPOINT)
-#   Console -> http://localhost:9101   (browse buckets; login = the root user/password below)
-# Host ports are 9100/9101 (not the MinIO defaults 9000/9001) because other local projects
-# commonly already bind 9000/9001.
+#   docker compose --env-file backend/.env -f docker-compose.dev.yml up -d
 #
-# Images: the official minio/minio image is no longer published on Docker Hub, so this uses
-# the pgsty community build (same S3 API, console included).
+# Credentials and bucket come from backend/.env (S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
+# S3_BUCKET), the same values the backend reads, so the two can never drift. Only these three
+# variables are interpolated into the containers; the rest of backend/.env (database URL,
+# OpenAI key, ...) is not passed to MinIO. Without --env-file the dev defaults below apply.
 #
-# The root credentials are dev-only defaults. Override them with MINIO_ROOT_USER /
-# MINIO_ROOT_PASSWORD in your shell, and keep backend/.env S3_ACCESS_KEY_ID /
-# S3_SECRET_ACCESS_KEY in sync. The `createbucket` job creates the private buckets on start
-# (`docgenie` for the app, `docgenie-test` for the pytest suite).
+#   API     -> http://localhost:9100   (S3_ENDPOINT=http://localhost:9100)
+#   Console -> http://localhost:9101   (log in with the access key / secret key)
+#
+# Host ports are 9100/9101, not the MinIO defaults 9000/9001, which other local projects
+# (DocuMind) already bind. The buckets are private (no anonymous policy): the backend checks
+# ownership and streams the bytes itself, and no presigned URLs are issued.
+#
+# MinIO no longer publishes minio/minio or minio/mc on Docker Hub; pgsty/* are community builds
+# of the same source (web console included), used as drop-ins.
+name: docgenie
+
 services:
   minio:
     image: pgsty/minio:latest
-    container_name: docgenie-minio
+    container_name: docgenie-dev-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-docgenie}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-docgenie-dev-secret}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-docgenie}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-docgenie-dev-secret}
     ports:
       - "127.0.0.1:9100:9000"
       - "127.0.0.1:9101:9001"
     volumes:
       - docgenie-minio-data:/data
+    restart: unless-stopped
 
-  createbucket:
+  # One-shot: create the private app bucket and the one pytest uses, then exit.
+  minio-init:
     image: pgsty/mc:latest
+    container_name: docgenie-dev-minio-init
     depends_on:
       - minio
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}; do sleep 1; done &&
-      mc mb --ignore-existing local/docgenie &&
-      mc mb --ignore-existing local/docgenie-test &&
-      mc anonymous set none local/docgenie
-      "
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-docgenie}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-docgenie-dev-secret}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-docgenie}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-docgenie-dev-secret}
+      S3_BUCKET: ${S3_BUCKET:-docgenie}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until mc alias set local http://minio:9000 "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY" >/dev/null 2>&1; do
+          sleep 1
+        done
+        mc mb -p "local/$$S3_BUCKET"
+        mc mb -p local/docgenie-test
+    restart: "no"
 
 volumes:
   docgenie-minio-data:
