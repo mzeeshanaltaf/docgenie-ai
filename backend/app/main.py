@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -7,7 +9,8 @@ from fastapi import APIRouter, Depends, FastAPI
 from app.db import dispose_engine, get_engine
 from app.deps import verify_internal_key
 from app.errors import register_error_handlers
-from app.routers import health
+from app.routers import credits, documents, health
+from app.services.ingestion import sweep_loop
 
 logging.basicConfig(level=logging.INFO)
 
@@ -15,8 +18,15 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     get_engine()
-    yield
-    await dispose_engine()
+    # Fail and refund documents stranded in `processing` by a crash (now, then periodically).
+    sweeper = asyncio.create_task(sweep_loop())
+    try:
+        yield
+    finally:
+        sweeper.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sweeper
+        await dispose_engine()
 
 
 def create_app() -> FastAPI:
@@ -35,6 +45,8 @@ def create_app() -> FastAPI:
     # depend on `current_user_id` (X-User-Id).
     v1 = APIRouter(prefix="/v1", dependencies=[Depends(verify_internal_key)])
     v1.include_router(health.router)
+    v1.include_router(credits.router)
+    v1.include_router(documents.router)
     app.include_router(v1)
     return app
 

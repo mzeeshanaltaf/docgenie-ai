@@ -1,0 +1,46 @@
+# Local dev services. Start with: docker compose -f docker-compose.dev.yml up -d
+#
+# MinIO (S3-compatible object storage) for the FastAPI backend.
+#   API     -> http://localhost:9100   (S3_ENDPOINT)
+#   Console -> http://localhost:9101   (browse buckets; login = the root user/password below)
+# Host ports are 9100/9101 (not the MinIO defaults 9000/9001) because other local projects
+# commonly already bind 9000/9001.
+#
+# Images: the official minio/minio image is no longer published on Docker Hub, so this uses
+# the pgsty community build (same S3 API, console included).
+#
+# The root credentials are dev-only defaults. Override them with MINIO_ROOT_USER /
+# MINIO_ROOT_PASSWORD in your shell, and keep backend/.env S3_ACCESS_KEY_ID /
+# S3_SECRET_ACCESS_KEY in sync. The `createbucket` job creates the private buckets on start
+# (`docgenie` for the app, `docgenie-test` for the pytest suite).
+services:
+  minio:
+    image: pgsty/minio:latest
+    container_name: docgenie-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-docgenie}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-docgenie-dev-secret}
+    ports:
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
+    volumes:
+      - docgenie-minio-data:/data
+
+  createbucket:
+    image: pgsty/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}; do sleep 1; done &&
+      mc mb --ignore-existing local/docgenie &&
+      mc mb --ignore-existing local/docgenie-test &&
+      mc anonymous set none local/docgenie
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-docgenie}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-docgenie-dev-secret}
+
+volumes:
+  docgenie-minio-data:

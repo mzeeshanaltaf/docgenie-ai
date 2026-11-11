@@ -21,6 +21,7 @@ class ErrorCode(StrEnum):
     ROWS_LIMIT_EXCEEDED = "ROWS_LIMIT_EXCEEDED"
     UNSUPPORTED_TYPE = "UNSUPPORTED_TYPE"
     NO_TEXT_FOUND = "NO_TEXT_FOUND"
+    STORAGE_UNAVAILABLE = "STORAGE_UNAVAILABLE"
     # generic codes
     UNAUTHORIZED = "UNAUTHORIZED"
     NOT_FOUND = "NOT_FOUND"
@@ -36,6 +37,7 @@ ERROR_HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.ROWS_LIMIT_EXCEEDED: 400,
     ErrorCode.UNSUPPORTED_TYPE: 415,
     ErrorCode.NO_TEXT_FOUND: 422,
+    ErrorCode.STORAGE_UNAVAILABLE: 503,
     ErrorCode.UNAUTHORIZED: 401,
     ErrorCode.NOT_FOUND: 404,
     ErrorCode.VALIDATION_ERROR: 422,
@@ -50,11 +52,37 @@ DEFAULT_MESSAGES: dict[ErrorCode, str] = {
     ErrorCode.ROWS_LIMIT_EXCEEDED: "The file exceeds the maximum number of rows.",
     ErrorCode.UNSUPPORTED_TYPE: "This file type is not supported.",
     ErrorCode.NO_TEXT_FOUND: "No text could be extracted from this document.",
+    ErrorCode.STORAGE_UNAVAILABLE: "File storage is temporarily unavailable. Please try again.",
     ErrorCode.UNAUTHORIZED: "Unauthorized.",
     ErrorCode.NOT_FOUND: "Not found.",
     ErrorCode.VALIDATION_ERROR: "The request is invalid.",
     ErrorCode.INTERNAL_ERROR: "Something went wrong.",
 }
+
+
+class IngestionErrorCode(StrEnum):
+    """Values stored in `documents.error_code` when a document ends up `failed`.
+
+    These are not HTTP errors (the upload already returned 202); the frontend maps them to
+    readable messages. `NO_TEXT_FOUND` deliberately matches the `ErrorCode` string.
+    """
+
+    NO_TEXT_FOUND = "NO_TEXT_FOUND"  # nothing extractable, even after OCR
+    PARSE_FAILED = "PARSE_FAILED"  # the file could not be read or decoded
+    OCR_FAILED = "OCR_FAILED"  # the vision model call failed for a scanned PDF
+    EMBEDDING_FAILED = "EMBEDDING_FAILED"  # the embeddings call failed
+    STORAGE_FAILED = "STORAGE_FAILED"  # the original file could not be stored
+    TEXT_TOO_LARGE = "TEXT_TOO_LARGE"  # extracted text exceeded MAX_EXTRACTED_CHARS
+    PROCESSING_INTERRUPTED = "PROCESSING_INTERRUPTED"  # backend restarted/crashed mid-ingest
+    INTERNAL_ERROR = "INTERNAL_ERROR"  # anything unexpected
+
+
+class IngestionError(Exception):
+    """Raised inside the ingestion pipeline to fail a document with a specific code."""
+
+    def __init__(self, code: IngestionErrorCode, message: str = "") -> None:
+        self.code = code
+        super().__init__(message or code.value)
 
 
 class ApiError(Exception):

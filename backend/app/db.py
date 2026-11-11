@@ -3,7 +3,12 @@
 from collections.abc import AsyncIterator
 
 from sqlalchemy import MetaData
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import get_settings
@@ -28,6 +33,13 @@ def get_engine() -> AsyncEngine:
         )
         _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
+
+
+def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """Session factory for code that runs outside a request (background ingestion, sweeps)."""
+    get_engine()
+    assert _sessionmaker is not None
+    return _sessionmaker
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

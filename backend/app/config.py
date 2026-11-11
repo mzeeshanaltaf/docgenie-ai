@@ -11,7 +11,11 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 # (model, service_tier) -> (USD per 1M input tokens, USD per 1M output tokens).
 # Placeholder values: fill in real prices before relying on cost_usd. A missing
 # entry means cost is recorded as null rather than guessed.
-PRICING: dict[tuple[str, str], tuple[float, float]] = {}
+PRICING: dict[tuple[str, str], tuple[float, float]] = {
+    # Embeddings have no service tier; "default" is the key used when logging them.
+    ("text-embedding-3-small", "default"): (0.02, 0.0),
+    # gpt-6-luna prices are not filled in yet (Phase 3): its cost is logged as null.
+}
 
 
 class Settings(BaseSettings):
@@ -45,6 +49,22 @@ class Settings(BaseSettings):
         ]
     )
     txt_words_per_page: int = 500
+
+    # --- Ingestion ---
+    # A PDF whose extracted text averages fewer characters per page than this is treated as
+    # scanned and sent through OCR.
+    ocr_min_chars_per_page: int = 25
+    ocr_reasoning_effort: str = "low"
+    ocr_render_scale: float = 2.0  # pdfium scale; 2.0 is roughly 144 dpi
+    ocr_concurrency: int = 4
+    embedding_batch_size: int = 64
+    csv_rows_per_chunk_chars: int = 1500  # soft size of a batch of CSV rows (one embedding)
+    # A `processing` document older than this is considered stranded by a crash and is failed
+    # and refunded by the sweep (run at startup and every INGESTION_SWEEP_INTERVAL_S).
+    # Keep it well above the longest legitimate ingestion (a 50-page OCR job takes minutes):
+    # the database may be shared with another running backend instance.
+    ingestion_stale_minutes: int = 10
+    ingestion_sweep_interval_s: int = 300
 
     # --- Retrieval ---
     chunk_size: int = 1000
