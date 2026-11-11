@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+## Active rebuild (read first)
+
+The n8n backend and the UI are being rebuilt in phases, one Claude Code session per phase. **Before working on any phase, read [docs/plan/README.md](docs/plan/README.md) and follow its session protocol.** The current status and handoff notes are in [docs/plan/progress.md](docs/plan/progress.md). Until Phase 10 rewrites this file, the n8n sections below describe the system being replaced, not the target.
+
 ## Overview
 
 Next.js 16 (App Router) SaaS. The frontend only handles routing, auth, and UI — **n8n webhooks are the entire backend** (data storage, AI processing, credits); the one exception is transactional auth email, which goes through **Resend**. Auth is **Better Auth** (email/password with OTP verification + Google OAuth, Postgres-backed). Production runs on self-hosted **Coolify** (Hostinger VPS), auto-deployed from `main` via GitHub Actions.

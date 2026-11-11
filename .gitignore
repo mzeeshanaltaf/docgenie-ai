@@ -32,9 +32,19 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
+
+# n8n workflow exports (contain live credentials in pinned data)
+/n8n_workflows/
+
+# python backend
+/backend/.venv/
+/backend/**/__pycache__/
+/backend/.pytest_cache/
+/backend/.ruff_cache/
 
 # typescript
 *.tsbuildinfo
