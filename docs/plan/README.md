@@ -46,7 +46,7 @@ Implement Phase N of the DocGenie rebuild. Start by reading docs/plan/README.md 
 
 | Phase | File | Status | Session date | Commit |
 |---|---|---|---|---|
-| 1 | [Backend foundation](phase-1-backend-foundation.md) | done | 2026-11-11 | |
+| 1 | [Backend foundation](phase-1-backend-foundation.md) | done | 2026-11-11 | d27fb66 |
 | 2 | [Documents and ingestion](phase-2-documents-and-ingestion.md) | not started | | |
 | 3 | [Chat backend](phase-3-chat-backend.md) | not started | | |
 | 4 | [Dashboard, account, contact](phase-4-dashboard-account-contact.md) | not started | | |
