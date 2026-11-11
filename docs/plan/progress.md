@@ -149,7 +149,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 ### Phase 2: Credits, storage and document ingestion (2026-11-11)
 
 - **Status:** done
-- **Commit:** not committed
+- **Commit:** 7f06637
 - **What was built:**
   - `docker-compose.dev.yml` (MinIO plus a bucket-creation job).
   - `backend/app/services/`: `storage.py`, `credits.py`, `parsing.py`, `ocr.py`, `chunking.py`, `embeddings.py`, `usage.py`, `ingestion.py`, plus two helpers not in the plan's file list: `uploads.py` (streaming multipart receiver with the byte cap) and `documents.py` (transactional create, ownership lookup, delete).
