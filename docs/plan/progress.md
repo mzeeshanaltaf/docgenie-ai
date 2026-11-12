@@ -11,7 +11,7 @@ No secrets anywhere in this file: record env var names and where their values li
 
 ## Current state
 
-_Last updated by: Phase 8 (done)_
+_Last updated by: Phase 9 (done)_
 
 ### How to run locally
 - Frontend: `npm run dev` (localhost:3000). Needs the backend running and `BACKEND_API_URL` + `INTERNAL_API_KEY` in root `.env.local` (Phase 5). Full local stack = MinIO container + `uv run uvicorn app.main:app --port 8765` + `npm run dev`.
@@ -207,7 +207,38 @@ Packages: `@assistant-ui/react` 0.15.35 (with `@assistant-ui/core` 0.3.35), `@as
 
 **Settings:** tabs Profile / Credits / Account, rows on the grid. Account: **Export** fetches `/api/account/export` and saves the blob (filename from `Content-Disposition`; errors are shown inline). **Delete** is an inline panel: type `DELETE`, plus the password when the account has one (`useHasPassword()` reads `authClient.listAccounts()`); `DELETE /api/account`; on success `authClient.signOut()` (errors ignored) then `window.location.assign("/")`, a full navigation so no dashboard request can run for the deleted user. A wrong password is `INVALID_PASSWORD` (inline message, nothing deleted); a Google-only user with a stale session gets `SESSION_EXPIRED` and a "Sign in again" button (to `/sign-in?redirect=/dashboard/settings`); a 502/503/504 says the account is still active.
 
+### Landing, marketing pages and brand (Phase 9)
+
+**Chrome:** `components/marketing/marketing-page.tsx` (`MarketingPage`: skip link, `Navbar`, `<main id="main">`, `Footer`) wraps every public content page (landing, About, Contact, Privacy, Terms, 404). Auth pages still use `AuthShell`. `navbar.tsx` is static (no sticky, blur or shrink), exports `NAV_LINKS` (all anchors are `/#id`), and has an inline mobile menu below `lg` (grid-rows open state, `inert` when closed, closes on Escape / link / route change). `footer.tsx` is one row: wordmark, year, About / Contact / Privacy / Terms. `components/marketing/legal-page.tsx` (`LegalPage`) lays out Privacy and Terms.
+
+**Landing section component map** (`src/app/(marketing)/page.tsx` composes them; all in `components/marketing/landing/`):
+
+| Section (anchor) | Component | File |
+|---|---|---|
+| Hero | `Hero` (+ client `HeroReplay`) | `sections.tsx`, `hero-replay.tsx` |
+| How an answer is made (`#pipeline`) | `PipelineSection` (+ client `Pipeline`, scroll-driven rail) | `sections.tsx`, `pipeline.tsx` |
+| What it handles (`#limits`) | `LimitsSection` (format / how read / limit table) | `sections.tsx` |
+| Under the hood (`#stack`) | `StackSection` | `sections.tsx` |
+| Free preview (`#preview`) | `PreviewSection` | `sections.tsx` |
+| Questions (`#faq`) | `FaqSection` (native `<details name="faq">`) | `sections.tsx` |
+| Closing CTA | `ClosingSection` | `sections.tsx` |
+
+All copy, figures and both JSON-LD objects live in `landing/content.ts` (`PIPELINE_CONFIG`, `PIPELINE_STEPS`, `FORMAT_ROWS`, `STACK_NOTES`, `PREVIEW_ROWS`, `FAQS`, `softwareApplicationSchema`, `faqSchema`, `SITE_URL`). Shared figures (20 MB, 50 pages, 10,000 CSV rows, OCR threshold 25, 5 + 25 credits) come from `lib/constants.ts`; the retrieval numbers (1,000 / 200 chunks, 30 candidates, RRF k 60, top 8, 8 agent steps, 100 rows, 5 s) are copied from `backend/app/config.py` into `PIPELINE_CONFIG`: **change both together**. `landing/reveal.tsx` is the scroll reveal. `lib/use-reduced-motion.ts` (`useReducedMotionSafe`) is the hydration-safe reduced-motion hook to use when the value changes what renders.
+
+**Hero replay:** built from the real presentational chat components (`ReasoningView`, `ToolTraceRow`, `CitationMark`, `SourceChip`, `MetricsRow`), not an assistant-ui runtime, so the landing bundle has no chat runtime. To allow that, `MetricsRow` moved out of `message-footer.tsx` into `components/chat/metrics-row.tsx` (message-footer imports it). The sequence is a staged timeline in `hero-replay.tsx` (`AT`, `STAGE`): question, reasoning, tool call, tool result, streamed answer, citation and sources, metrics, source excerpt opens. The server render, no-JS, print and reduced motion all show the finished turn; it starts only after mount, in view, with motion allowed. Only opacity and transform animate (the source excerpt opens by `grid-template-rows`). **Recorded data (all verbatim, nothing invented):** one live turn captured on 2026-11-12 against the real backend and `gpt-6-luna`, as a throwaway user (since cleaned up) with the two-page contract PDF from `backend/scripts/e2e_chat.py`. Question: "An invoice reaches the client on 3 March. What is the last day it can be paid?" (chosen so the model produces a reasoning summary; an easier first question, "When does the client have to pay an invoice?", gave none, which the contract allows). Recorded: the reasoning summary, the `search_documents` call and its 1,601 ms result, the streamed answer (`The invoice can be paid through **2 April**, 30 days after ...` with the model's own em dash kept as recorded), the citation (`contract.pdf`, pp.1-2, its real snippet, which the excerpt marks whole like the real viewer) and the metrics (first token 7,350 ms, total 7,619 ms, 29.1 tokens/s, 2,402 in / 175 out). Two real runs were made; this is the one with reasoning. Only the pacing is ours. The capture script lived in the session scratchpad, not the repo.
+
+**Brand assets:** logo source of truth is `src/lib/brand.ts` (`BRAND_HEX`: sRGB values of the paper / ink / vermilion tokens, for places that cannot read CSS variables; `LOGO_MARK` geometry). `components/wordmark.tsx` now exports `LogoMark` and `Wordmark` (ink only). Static `public/logo.svg` (reversed mark; the Organization JSON-LD `logo` points to it). Generated: `src/app/icon.tsx` (32 px) and `apple-icon.tsx` (180 px) draw the mark reversed (paper lines on an ink square); `opengraph-image.tsx` (1200 x 630) is paper, ink, hairlines, one citation mark and the real limits, using the default Satori font (no custom font loaded). `viewport.themeColor` uses `BRAND_HEX.paper` / `paperDark` (`#f8fafd` / `#0b1016`, unchanged values). Root `metadata` title / description / OG / Twitter rewritten without em dashes.
+
 ### Decisions made during implementation
+- **Phase 9 – the plan counted as the confirmed design brief** (as in Phases 6 and 8): no separate shape interview and no visual mock step (no image generation in this harness).
+- **Phase 9 – the hero is a replay of one real recorded turn**, labelled as such with a caption ("A real turn against a two-page sample contract, recorded on 12 November 2026 and sped up ... on the development setup with a remote database"). It uses the real timings even though they are slow (the database is remote), because the plan forbids unverified speed claims and the page now claims none. To refresh it after Phase 11, re-capture a turn and replace the constants at the top of `hero-replay.tsx`.
+- **Phase 9 – no pricing section.** Pro and Enterprise are removed; "Free preview" states the honest offer (5 documents, 25 messages, no card, no paid plan). Anchors changed: `#features`, `#how-it-works`, `#pricing` are gone; the new ones are `#pipeline`, `#limits`, `#stack`, `#preview`, `#faq`.
+- **Phase 9 – the navbar is static**, not sticky (DESIGN.md: "does not float, blur or shrink on scroll"); the mobile menu is an inline panel, not a sheet.
+- **Phase 9 – icons are ink-only** (The One Mark Rule: the accent is not spent on the logo).
+- **Phase 9 – legal copy updated to match shipped features:** Privacy and Terms now say account deletion and export are self-service in Settings, deletion is immediate (30 days only for a request through the contact form), credits are refunded on failed uploads and answers, and there is no way to buy more. Terms no longer claim ownership of "AI models" (they are OpenAI's). Both are dated 12 November 2026.
+- **Phase 9 – transactional email copy lost its em dashes** (`lib/email.ts`, three strings); nothing else in that file changed.
+- **Phase 9 – About has no author name or link** (nothing in the repo says what to publish). See the handoff.
+
 - **Phase 8 – the plan counted as the confirmed design brief** (as in Phase 6): no separate shape interview, and no visual mock step because the harness has no image generation.
 - **Phase 8 – one row per file in the document list.** The plan asked the upload to show "a status for each file". Instead of a separate tray plus a list (the same file twice), the list shows browser-side items (Uploading, Rejected) above the server's documents, so there is one table and one status per file.
 - **Phase 8 – inline confirmations, no dialogs.** Document delete and account delete are inline panels (DESIGN.md: modal is not a first thought). The preview dialog is gone: Open uses the Phase 7 viewer.
@@ -267,11 +298,13 @@ Packages: `@assistant-ui/react` 0.15.35 (with `@assistant-ui/core` 0.3.35), `@as
 - **Phase 5 – upload limits** are `MAX_UPLOAD_MB = 20` / `MAX_UPLOAD_PAGES = 50` in `src/lib/constants.ts` (UI text and an early size check); the backend is the authority.
 
 ### Known issues and deferred work
-- **Leftover emerald and old styling (updated by Phase 8):** every dashboard, settings, auth and shared-app component is now token-only (`grep -rE "\b(emerald|slate|zinc|gray|green|blue|amber|red)-[0-9]{2,3}\b|bg-white|text-white" src` lists only the files below). Still on raw palette classes, all Phase 9: `components/marketing/{navbar,footer}.tsx` (`user-menu.tsx` is clean, so the navbar's menu already matches), `app/(marketing)/{page,about}/page.tsx`, `app/not-found.tsx`, and `components/contact/contact-form.tsx` (the destination of the sidebar's "Help & Support" link, so a signed-in user still lands on an emerald form until Phase 9; the contact page also keeps the marketing navbar and footer). The navbar and footer should adopt `Wordmark`. The marketing pages also use `var(--font-display)` with an italic style; it is aliased to the sans in `globals.css` (`body { --font-display }`) so they still render, with a synthesized italic. Delete the alias when those pages are rewritten.
+- **Leftover emerald and old styling: none (Phase 9).** `grep -rE "\b(emerald|slate|zinc|gray|green|blue|amber|red)-[0-9]{2,3}\b|bg-white|text-white|font-display|fontStyle" src` returns nothing, and the `--font-display` alias is deleted from `globals.css`. The only hex values left in `src` are the Google logo fills (Phase 8), `lib/brand.ts` (image contexts) and the inline-styled email HTML in `lib/email.ts` (slate hex from before the rebuild; emails are not part of the site's design system and were not restyled).
 - **`CLAUDE.md` "Styling" section still describes the emerald classes** (Phase 10 rewrites it).
-- **Root layout `<title>` and the marketing copy still contain em dashes** ("DocGenie — Chat With Your Documents", etc.); DESIGN.md forbids them. Phase 9 rewrites that copy and the metadata.
-- **Legal copy fixed after Phase 5 (2026-11-12):** the privacy page now describes OpenAI processing (questions, passages, embeddings, titles, scanned-page images; sent with storage disabled), Resend, Upstash and the self-hosted n8n contact workflow, stored data and deletion, with one consistent "last updated" date; the landing FAQ and About line that said data is "never shared with third parties" were corrected. The terms needed no change. Phase 9 should keep these claims true when it rewrites the marketing pages.
-- **Root `README.md` still documents the n8n architecture and env vars** (Phase 10 rewrites docs); `CLAUDE.md`'s n8n sections are stale until then too.
+- **Em dashes:** none in user-visible copy under `src` (Phase 9 also fixed three email strings). Code comments still contain some; they are not user-visible.
+- **Legal copy** was brought in line with the shipped features in Phase 9 (see Decisions). Keep it true if limits, providers or deletion behavior change.
+- **Landing figures are copied, not imported:** the retrieval numbers in `landing/content.ts` (`PIPELINE_CONFIG`) mirror `backend/app/config.py`. There is no test that ties them together.
+- **Hero replay figures are from the development setup** (remote database: 5 s search, 9.5 s to first token). Refresh them in `hero-replay.tsx` after deployment if production is faster.
+- **About has no author name, link or contact detail**, and the OG image uses Satori's default font. Both are easy follow-ups if the user wants them.- **Root `README.md` still documents the n8n architecture and env vars** (Phase 10 rewrites docs); `CLAUDE.md`'s n8n sections are stale until then too.
 - **Coolify still holds the removed `N8N_*` vars** and has no `BACKEND_API_URL` / `INTERNAL_API_KEY` (Phase 11).
 - **Flex tier** is opt-in (`CHAT_SERVICE_TIER=flex`); the fallback retry on `FLEX_FALLBACK_TIER` is implemented (Phase 3). Measured live (Phase 3, 27 flex calls with a trivial one-word prompt): 6 to 15 s per call (default tier: about 1 to 2 s per model call), and "Flex processing is temporarily unavailable" showed up once (4 of 5 in the Phase 1 probe, so the rate varies a lot). It arrives either as an HTTP 429 at request time or, as seen in that one case, as an `APIError` from inside the open stream about 1.7 s in; the retry handles both when no content has been streamed yet. The in-stream shape was only reproduced with a fake in tests (the live fix was not re-observed because the unavailability did not recur in the 21 calls after it). Not recommended as the default for an interactive chat.
 - **`gpt-6-luna` prices are still unknown** to the repo, so `llm_usage.cost_usd` is `NULL` for chat, title and OCR. Set `LLM_INPUT_PRICE_PER_M` / `LLM_OUTPUT_PRICE_PER_M` in `backend/.env` (the user has to supply them); nothing else needs to change.
@@ -616,3 +649,39 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
   - Phase 10: `CLAUDE.md` Styling section; the root README's n8n content.
 - **Notes for the next session:** Phase 9 can start (it needs Phase 6; Phase 8's primitives are listed above). The dev servers were stopped and both throwaway users were deleted (one through the Settings UI, one by a cleanup script). Local MinIO is still running.
 
+### Phase 9: Landing page, marketing pages and brand assets (2026-11-12)
+
+- **Status:** done
+- **Commit:** not committed (see the status table in README.md)
+- **What was built:**
+  - Landing page split into section components (map under Current state > Landing, marketing pages and brand): hero with a replay of a real recorded turn, a scroll-driven pipeline, limits table, under the hood, free preview, FAQ, closing CTA. Pro, Enterprise and "< 5 seconds" are gone.
+  - Navbar rewritten (static, `NAV_LINKS`, inline mobile menu), footer simplified, new `MarketingPage` and `LegalPage` shells.
+  - About, Contact (+ `contact-form.tsx` on tokens, progressive enhancement untouched), Privacy, Terms and the 404 restyled; legal copy and dates brought in line with the shipped features.
+  - Brand: `lib/brand.ts`, `LogoMark` + `Wordmark`, `public/logo.svg`, `icon.tsx`, `apple-icon.tsx`, `opengraph-image.tsx`, `themeColor` from `BRAND_HEX`, root metadata without em dashes. `--font-display` alias deleted.
+  - Small edits to earlier phases: `MetricsRow` moved to `components/chat/metrics-row.tsx` (Phase 7), `lib/email.ts` (three em dashes), `lib/constants.ts` (+ `MAX_CSV_ROWS`, `OCR_MIN_CHARS_PER_PAGE`), `sitemap.ts` (+ `/contact`).
+- **Exit criteria:**
+  - PASS: every figure matches the backend config. Limits and credits come from `lib/constants.ts` (20 MB, 50 pages, 10,000 CSV rows, OCR below 25 chars/page, 5 + 25); the pipeline numbers were copied from `backend/app/config.py` by hand and re-read against it (not machine-checked).
+  - PASS: hero replay and pipeline with motion and with reduced motion. Real Chrome through Playwright against `next dev`: the sequence ran to the finished turn (reasoning, tool call, streamed answer, citation, sources, timings, source excerpt); Replay restarts it; the citation mark toggles the source excerpt; with `reducedMotion: reduce` the finished turn shows at once, no Replay button, no hydration error. A first run found a hydration mismatch in the reduced-motion case (motion's hook answers on the first client render); fixed with `useReducedMotionSafe`. The pipeline's scroll rail was scrolled through but its fill was judged from a full-page capture, not frame by frame.
+  - PASS: mobile menu opens, Escape closes it and returns focus to the button, a link click closes it and the anchor scrolls (`#limits`). `scrollWidth - clientWidth` was 0 at 1440, 768 and 390 px on the landing page and at 1440 and 390 px on About, Contact, Privacy, Terms and the 404.
+  - PASS (structural; no official validator was run): the three JSON-LD blocks (Organization, SoftwareApplication, FAQPage) in the rendered HTML parse, carry `@context` and `@type`, the FAQ has 7 questions matching the visible ones one for one, and no stale claim (Pro, Enterprise, "< 5", 5 MB, 20 pages) appears. Not submitted to Google's Rich Results Test or validator.schema.org (no network use from the session).
+  - PASS: no banned patterns. No raw palette classes, hex values, gradients, blur, `background-clip`, pills, centered stacks or em dashes in user-visible copy under `src`; headings are not restated beneath themselves.
+  - PASS: `npx tsc --noEmit` and `npm run build` are clean (the first build hit the transient Windows `EBUSY` while the dev server was still stopping, as in Phase 8; the retry was clean). No ESLint config exists.
+  - Not checked: no-JavaScript rendering of the landing reveals (the `<noscript>` rule is in the HTML but was not exercised in a no-JS browser); the contact form's no-JS POST (its logic is unchanged); the OTP-gated auth flows (unchanged since Phase 8).
+- **Deviations from the phase file:**
+  - Added `MarketingPage`, `LegalPage`, `landing/content.ts`, `useReducedMotionSafe`, `lib/brand.ts` and `public/logo.svg`; not listed in the plan.
+  - The hero replay is built from the presentational chat components, not the assistant-ui static runtime the Phase 7 handoff suggested (that recipe was never run); this keeps the chat runtime out of the landing bundle. `MetricsRow` was moved to its own file for it.
+  - The plan's "navbar gets a mobile menu" is an inline panel, not a sheet.
+  - No visual mock step and no live shape interview (see Decisions).
+- **Decisions made:** see Current state > Decisions (plan as brief, replay of a real recorded run, no pricing section and new anchors, static navbar, ink-only icons, legal copy, email dashes, About without a name).
+- **Phase-specific handoff items:**
+  - *Section component map:* Current state > Landing, marketing pages and brand.
+  - *Brand asset files and logo source:* `src/lib/brand.ts` (colors + geometry), `src/components/wordmark.tsx`, `public/logo.svg`, `src/app/{icon,apple-icon,opengraph-image}.tsx`; `viewport.themeColor` in `src/app/layout.tsx`.
+  - *JSON-LD validation result:* structural check passed (above); not run through an external validator.
+  - *Copy or figures that need the user's input:* (1) the hero transcript is now fully real (re-recorded live at the user's request, 2026-11-12) but its timings are development-setup numbers; re-record after deployment if production is faster; (2) About has no author name, photo or link; (3) the OG image uses a default font; (4) Privacy and Terms were edited for accuracy, not reviewed by a lawyer.
+- **How to verify this phase still works:** `npx tsc --noEmit`; `npm run build`; `npm run dev` (the landing needs no backend, only `DATABASE_URL` for the session check); open `/`, `/about`, `/contact`, `/privacy`, `/terms` and a missing path at 1440 and 390 px in light and dark; open the mobile menu; check `/icon`, `/apple-icon` and `/opengraph-image` return PNGs; `grep -rE "\b(emerald|slate|zinc|gray|green|blue|amber|red)-[0-9]{2,3}\b|bg-white|text-white|font-display" src` (expect nothing). The scripted run used `playwright-core` with the system Chrome from a scratch folder (not in the repo).
+- **Open issues / follow-ups:**
+  - Phase 10: `CLAUDE.md` still names the old anchors (`#features`, `#pricing`) and the emerald styling; the root README's n8n content.
+  - Phase 11: set `NEXT_PUBLIC_*` as build-time vars; re-record the hero figures if wanted; check the OG image and `/logo.svg` on the real domain.
+  - The landing's `PIPELINE_CONFIG` can drift from `backend/app/config.py` (no test).
+  - The hero replay holds a 31 rem minimum height to avoid layout jumps; on a very short laptop viewport the panel extends below the fold until the sequence ends.
+- **Notes for the next session:** Phase 10 can start. The dev server was stopped. Local MinIO and the backend were not used this phase.

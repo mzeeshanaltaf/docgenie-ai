@@ -1,8 +1,37 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { LOGO_MARK } from "@/lib/brand";
+
+/** The mark alone, drawn in the current text color. Geometry lives in lib/brand.ts. */
+export function LogoMark({ size = 20, className }: { size?: number; className?: string }) {
+  const { viewBox, frame, lines, strokeWidth } = LOGO_MARK;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${viewBox} ${viewBox}`}
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <rect
+        x={frame.x}
+        y={frame.y}
+        width={frame.size}
+        height={frame.size}
+        rx={frame.radius}
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+      />
+      {lines.map((d) => (
+        <path key={d} d={d} stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="square" />
+      ))}
+    </svg>
+  );
+}
 
 /**
- * The DocGenie mark: a ruled square holding a page corner, then the name.
+ * The DocGenie mark (a ruled square holding a page of text) plus the name.
  * Ink only. The accent is not spent on the logo (The One Mark Rule).
  */
 export function Wordmark({
@@ -21,10 +50,7 @@ export function Wordmark({
         className
       )}
     >
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <rect x="1" y="1" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M6 7h8M6 10h8M6 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" />
-      </svg>
+      <LogoMark />
       <span className="text-[1.0625rem] leading-none font-semibold tracking-tight">DocGenie</span>
     </Link>
   );

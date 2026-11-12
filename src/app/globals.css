@@ -242,10 +242,6 @@
     line-height: var(--text-body--line-height);
     font-feature-settings: "kern", "liga";
     text-rendering: optimizeLegibility;
-    /* Legacy alias: pages written before Phase 6 still read var(--font-display)
-       (DM Serif Display, now removed). Delete when Phases 8 and 9 have
-       rewritten those pages. */
-    --font-display: var(--font-schibsted);
   }
   ::selection {
     background: var(--brand-subtle);

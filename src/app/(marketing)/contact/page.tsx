@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/marketing/navbar";
-import { Footer } from "@/components/marketing/footer";
+import { MarketingPage } from "@/components/marketing/marketing-page";
 import { ContactForm } from "@/components/contact/contact-form";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description:
-    "Get in touch with the DocGenie team — questions, feedback, bug reports, or sales enquiries.",
+  description: "Send a question, a bug report or feedback about DocGenie.",
+  alternates: { canonical: "/contact" },
 };
 
 // Short error codes set by the API route's redirect (?error=...) mapped to
@@ -31,24 +30,24 @@ export default async function ContactPage({ searchParams }: Props) {
     : undefined;
 
   return (
-    <>
-      <Navbar />
-      <main className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Get in touch
-          </h1>
-          <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-            Have a question, some feedback, or a sales enquiry? Send us a
-            message and we&apos;ll respond as soon as possible.
-          </p>
-        </div>
+    <MarketingPage>
+      <div className="page-container pt-12 pb-24 md:pt-16 md:pb-32">
+        <div className="page-grid gap-y-10">
+          <header className="col-span-4 md:col-span-12 lg:col-span-5">
+            <h1 className="text-section text-balance">Send a message</h1>
+            <p className="measure mt-4 max-w-sm text-body text-muted-foreground">
+              Questions, bug reports and feedback are all welcome. Say what you were doing and what
+              you expected, and a reply goes to the email address you give.
+            </p>
+          </header>
 
-        <div className="rounded-2xl border p-6 sm:p-8">
-          <ContactForm initialSuccess={!!sent} initialError={initialError} />
+          <div className="col-span-4 md:col-span-8 md:col-start-3 lg:col-span-5 lg:col-start-8 lg:border-l lg:border-rule lg:pl-12">
+            <div className="max-w-md">
+              <ContactForm initialSuccess={!!sent} initialError={initialError} />
+            </div>
+          </div>
         </div>
-      </main>
-      <Footer />
-    </>
+      </div>
+    </MarketingPage>
   );
 }

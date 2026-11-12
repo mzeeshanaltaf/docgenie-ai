@@ -86,7 +86,7 @@ const COPY: Record<
     heading: "Reset your password",
     intro: "Enter this code to choose a new password for your DocGenie account.",
     outro:
-      "If you didn't request a password reset, you can safely ignore this email — your password won't change.",
+      "If you didn't request a password reset, you can safely ignore this email. Your password won't change.",
   },
 };
 
@@ -140,7 +140,7 @@ function otpTemplate(otp: string, type: OtpEmailType) {
               </td>
             </tr>
           </table>
-          <p style="margin:16px 0 0 0;font-size:12px;color:#94a3b8;">DocGenie — chat with your documents</p>
+          <p style="margin:16px 0 0 0;font-size:12px;color:#94a3b8;">DocGenie: chat with your documents</p>
         </td>
       </tr>
     </table>
@@ -157,7 +157,7 @@ function otpTemplate(otp: string, type: OtpEmailType) {
     "",
     outro,
     "",
-    "DocGenie — chat with your documents",
+    "DocGenie: chat with your documents",
   ].join("\n");
 
   return { subject, html, text };

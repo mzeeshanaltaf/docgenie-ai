@@ -1,28 +1,17 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/marketing/navbar";
-import { Footer } from "@/components/marketing/footer";
-import { JsonLd } from "@/components/seo/json-ld";
+import { LegalPage, type LegalSection } from "@/components/marketing/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "DocGenie Privacy Policy — how we collect, use, and protect your data.",
+  description: "How DocGenie collects, uses and protects your data, and which services touch it.",
   alternates: { canonical: "/privacy" },
 };
 
-const breadcrumbSchema = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: "https://docgenie.zeeshanai.cloud" },
-    { "@type": "ListItem", position: 2, name: "Privacy Policy", item: "https://docgenie.zeeshanai.cloud/privacy" },
-  ],
-};
-
-const sections = [
+const sections: LegalSection[] = [
   {
     title: "1. Information we collect",
     body: [
-      "When you create an account, we collect your name and email address. Passwords are stored only as salted, one-way hashes — we never store your password in plain text. You may also sign in with Google, in which case we receive your name, email address, and profile image from Google.",
+      "When you create an account, we collect your name and email address. Passwords are stored only as salted, one-way hashes; we never store your password in plain text. You may also sign in with Google, in which case we receive your name, email address, and profile image from Google.",
       "When you use our document Q&A features, we store the files you upload, extract their text, split it into passages and index those passages (including numerical representations of their meaning, called embeddings) so we can find the relevant parts when you ask a question. We also store your conversations (your questions, the answers, and any like or dislike feedback you give) and a record of your credit usage.",
       "We use a self-hosted, privacy-friendly analytics tool (Umami) to collect aggregate usage data such as pages visited, referrers, and approximate location, device, and browser type. This data is anonymous, collected without cookies, and is not linked to your identity or personal account.",
     ],
@@ -31,16 +20,16 @@ const sections = [
     title: "2. How we use your information",
     body: [
       "To provide and improve the DocGenie service, including processing documents and generating AI-powered answers to your questions.",
-      "To manage your account, process credits, and send transactional emails (e.g. email verification codes and password resets).",
+      "To manage your account, process credits, and send transactional emails (for example email verification codes and password resets).",
       "To analyse usage patterns in aggregate to inform product decisions. We do not sell your personal data to third parties.",
     ],
   },
   {
     title: "3. Data retention",
     body: [
-      "Account data (name, email) is retained for as long as your account is active. You may request deletion at any time by contacting us.",
+      "Account data (name, email) is retained for as long as your account is active. You can delete your account yourself in Settings, under Account, or ask us to delete it through the contact form.",
       "Uploaded documents (the original files, the extracted text and the index built from it) are retained while your account is active, or until you delete the document.",
-      "Chat history, feedback and credit records stored in your dashboard are retained while your account is active. When your account is deleted, we remove your documents, stored files, conversations, feedback and credit records, and we complete this within 30 days of your request.",
+      "Chat history, feedback and credit records stored in your dashboard are retained while your account is active. When you delete your account from Settings, your documents, stored files, conversations, feedback, credit records and sign-in details are removed straight away. If you ask us to delete the account instead, we complete this within 30 days of your request.",
     ],
   },
   {
@@ -62,7 +51,7 @@ const sections = [
   {
     title: "6. Your rights",
     body: [
-      "You have the right to access, correct, or delete your personal data at any time. To exercise these rights, contact us using the link in the footer.",
+      "You have the right to access, correct, or delete your personal data at any time. Settings, under Account, lets you download an export of your documents, conversations and credit records, and delete your account. For anything else, use the contact form.",
       "If you are located in the European Economic Area, you have rights under GDPR including the right to data portability and the right to object to processing.",
       "We will respond to all privacy-related requests within 30 days.",
     ],
@@ -71,67 +60,22 @@ const sections = [
     title: "7. Changes to this policy",
     body: [
       "We may update this Privacy Policy from time to time. We will notify you of material changes by email or by displaying a notice in the application. Continued use of the service after changes constitutes acceptance of the updated policy.",
-      "This policy was last updated on 12 November 2026.",
     ],
   },
 ];
 
 export default function PrivacyPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <JsonLd data={breadcrumbSchema} />
-      <Navbar />
-
-      <main className="flex-1">
-        <section className="border-b border-border/50 px-4 py-16 md:py-20">
-          <div className="container mx-auto max-w-3xl">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Legal
-            </p>
-            <h1
-              className="mt-4 text-4xl tracking-tight md:text-5xl"
-              style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
-            >
-              Privacy Policy
-            </h1>
-            <p className="mt-4 text-muted-foreground">
-              Last updated: 12 November 2026
-            </p>
-            <p className="mt-4 leading-relaxed text-muted-foreground">
-              DocGenie (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to
-              protecting your privacy. This policy explains what data we collect, how we use it,
-              and your rights in relation to it.
-            </p>
-          </div>
-        </section>
-
-        <section className="px-4 py-16">
-          <div className="container mx-auto max-w-3xl space-y-12">
-            {sections.map(({ title, body }) => (
-              <div key={title}>
-                <h2 className="text-xl font-semibold">{title}</h2>
-                <div className="mt-4 space-y-3">
-                  {body.map((paragraph, i) => (
-                    <p key={i} className="leading-relaxed text-muted-foreground">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            <div className="rounded-xl border border-border bg-muted/30 p-6">
-              <p className="font-semibold">Contact us about privacy</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                If you have questions about this Privacy Policy or want to exercise your rights,
-                use the Contact link in the footer or email us directly.
-              </p>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <Footer />
-    </div>
+    <LegalPage
+      title="Privacy Policy"
+      path="/privacy"
+      updated="12 November 2026"
+      intro={'DocGenie ("we", "our", or "us") is committed to protecting your privacy. This policy explains what data we collect, how we use it, and your rights in relation to it.'}
+      sections={sections}
+      closing={{
+        title: "Questions about privacy",
+        body: "If you have questions about this policy or want to exercise your rights, get in touch.",
+      }}
+    />
   );
 }

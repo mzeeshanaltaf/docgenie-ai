@@ -21,6 +21,13 @@ export const OTP_SENDER_EMAIL = "noreply@verification.zeeshanai.cloud";
 export const MAX_UPLOAD_MB = 20;
 export const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 export const MAX_UPLOAD_PAGES = 50;
+export const MAX_CSV_ROWS = 10_000;
+
+/**
+ * A PDF whose text layer averages fewer characters than this per page is read
+ * with OCR instead (backend OCR_MIN_CHARS_PER_PAGE).
+ */
+export const OCR_MIN_CHARS_PER_PAGE = 25;
 
 /** What a new account starts with (backend signup grant). Shown on the auth pages. */
 export const SIGNUP_DOCUMENT_CREDITS = 5;

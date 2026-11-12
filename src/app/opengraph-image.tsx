@@ -1,131 +1,107 @@
 import { ImageResponse } from "next/og";
+import { BRAND_HEX as C } from "@/lib/brand";
+import {
+  MAX_UPLOAD_MB,
+  MAX_UPLOAD_PAGES,
+  SIGNUP_DOCUMENT_CREDITS,
+  SIGNUP_MESSAGE_CREDITS,
+} from "@/lib/constants";
 
 export const runtime = "edge";
-export const alt = "DocGenie — Chat With Your Documents";
+export const alt = "DocGenie: ask your documents, check the source";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+const FACTS: [string, string][] = [
+  ["FORMATS", "PDF, DOCX, TXT, CSV"],
+  ["PER FILE", `${MAX_UPLOAD_MB} MB, ${MAX_UPLOAD_PAGES} pages`],
+  ["FREE PREVIEW", `${SIGNUP_DOCUMENT_CREDITS} documents, ${SIGNUP_MESSAGE_CREDITS} messages`],
+];
+
+// Paper, ink and one red mark. The same grammar as the site: hairline rules,
+// a legend over each figure, and a citation mark where the answer came from.
 export default function OGImage() {
   return new ImageResponse(
     (
       <div
         style={{
-          background: "linear-gradient(135deg, #020817 0%, #0f2027 50%, #0d2a1f 100%)",
+          background: C.paper,
+          color: C.ink,
           width: "100%",
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "space-between",
+          padding: "56px 72px 64px",
           fontFamily: "sans-serif",
-          position: "relative",
         }}
       >
-        {/* Emerald glow */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -60%)",
-            width: 600,
-            height: 300,
-            borderRadius: "50%",
-            background: "radial-gradient(ellipse, rgba(16,185,129,0.18) 0%, transparent 70%)",
-          }}
-        />
-
-        {/* Icon badge */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 80,
-            height: 80,
-            borderRadius: 20,
-            background: "rgba(16,185,129,0.15)",
-            border: "1.5px solid rgba(16,185,129,0.4)",
-            marginBottom: 28,
-          }}
-        >
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <svg width="40" height="40" viewBox="0 0 20 20" fill="none">
+            <rect x="1" y="1" width="18" height="18" rx="2" stroke={C.ink} strokeWidth="1.5" />
+            <path d="M6 7h8M6 10h8M6 13h4" stroke={C.ink} strokeWidth="1.5" strokeLinecap="square" />
           </svg>
+          <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: "-1px" }}>DocGenie</div>
         </div>
 
-        {/* Brand name */}
-        <div
-          style={{
-            fontSize: 72,
-            fontWeight: 700,
-            color: "#ffffff",
-            letterSpacing: "-2px",
-            lineHeight: 1,
-          }}
-        >
-          DocGenie
-        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              fontSize: 96,
+              fontWeight: 700,
+              lineHeight: 1,
+              letterSpacing: "-3px",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div>Ask your documents.</div>
+            <div>Check the source.</div>
+          </div>
 
-        {/* Tagline */}
-        <div
-          style={{
-            fontSize: 28,
-            color: "rgba(255,255,255,0.55)",
-            marginTop: 16,
-            letterSpacing: "-0.5px",
-          }}
-        >
-          Chat with your documents using AI
-        </div>
-
-        {/* Pills */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            marginTop: 36,
-          }}
-        >
-          {["PDF", "DOCX", "TXT", "CSV"].map((ext) => (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginTop: 36,
+              fontSize: 30,
+              color: C.inkSoft,
+            }}
+          >
+            <div>Invoices are due within 30 days of receipt.</div>
             <div
-              key={ext}
               style={{
-                padding: "6px 16px",
-                borderRadius: 999,
-                background: "rgba(16,185,129,0.12)",
-                border: "1px solid rgba(16,185,129,0.3)",
-                color: "#10b981",
-                fontSize: 16,
-                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginLeft: 10,
+                width: 34,
+                height: 34,
+                fontSize: 22,
+                fontWeight: 700,
+                color: C.vermilion,
+                background: C.vermilionTint,
+                border: `2px solid ${C.vermilion}`,
+                borderRadius: 3,
               }}
             >
-              {ext}
+              1
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* Domain */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 36,
-            color: "rgba(255,255,255,0.25)",
-            fontSize: 18,
-            letterSpacing: "0.5px",
-          }}
-        >
-          docgenie.zeeshanai.cloud
+        <div style={{ display: "flex", borderTop: `2px solid ${C.rule}`, paddingTop: 20 }}>
+          {FACTS.map(([label, value]) => (
+            <div
+              key={label}
+              style={{ display: "flex", flexDirection: "column", marginRight: 64 }}
+            >
+              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "2px", color: C.inkSoft }}>
+                {label}
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 600, marginTop: 6 }}>{value}</div>
+            </div>
+          ))}
         </div>
       </div>
     ),

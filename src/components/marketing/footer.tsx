@@ -1,66 +1,37 @@
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import { Wordmark } from "@/components/wordmark";
 
-const links = {
-  Product: [
-    ["Features", "/#features"],
-    ["Pricing", "/#pricing"],
-    ["How it works", "/#how-it-works"],
-  ],
-  Company: [
-    ["About", "/about"],
-    ["Contact", "/contact"],
-  ],
-  Legal: [
-    ["Privacy", "/privacy"],
-    ["Terms", "/terms"],
-  ],
-} as const;
+const LINKS = [
+  ["About", "/about"],
+  ["Contact", "/contact"],
+  ["Privacy", "/privacy"],
+  ["Terms", "/terms"],
+] as const;
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/50 bg-background">
-      <div className="container mx-auto max-w-6xl px-4 py-12">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/10">
-                <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <span className="font-semibold">DocGenie</span>
-            </Link>
-            <p className="mt-3 max-w-52 text-sm leading-relaxed text-muted-foreground">
-              AI-powered document Q&A. Upload your documents and get instant answers.
-            </p>
-            <p className="mt-5 font-mono text-xs text-muted-foreground/50">
-              © {new Date().getFullYear()} DocGenie
-            </p>
-          </div>
-
-          {/* Link columns */}
-          {(Object.entries(links) as [string, readonly (readonly [string, string])[]][]).map(
-            ([section, items]) => (
-              <div key={section}>
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  {section}
-                </p>
-                <ul className="mt-4 space-y-2.5">
-                  {items.map(([label, href]) => (
-                    <li key={label}>
-                      <Link
-                        href={href}
-                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )
-          )}
+    <footer className="border-t border-rule">
+      <div className="page-container flex flex-col gap-6 py-8 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <Wordmark />
+          <span className="figure text-caption text-muted-foreground">
+            {new Date().getFullYear()}
+          </span>
         </div>
+        <nav aria-label="Footer">
+          <ul className="flex flex-wrap gap-x-6 gap-y-1">
+            {LINKS.map(([label, href]) => (
+              <li key={label}>
+                <Link
+                  href={href}
+                  className="inline-flex min-h-9 items-center rounded-sm text-body-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </footer>
   );

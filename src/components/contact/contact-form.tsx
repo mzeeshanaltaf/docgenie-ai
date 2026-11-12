@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Send, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Loader2, Send, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,26 +60,27 @@ export function ContactForm({ initialSuccess = false, initialError }: Props) {
 
   if (status === "success") {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-6 py-12 text-center">
-        <span className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-          <CheckCircle2 className="size-6 text-emerald-500" />
-        </span>
-        <h2 className="text-xl font-semibold">Thank you for contacting us!</h2>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          We&apos;ll get back to you as soon as possible.
+      <div role="status" className="border-y border-rule py-6">
+        <p className="flex items-center gap-2 text-title">
+          <CheckCircle2 aria-hidden className="size-5 text-success" />
+          Message sent
         </p>
-        <button
+        <p className="mt-2 text-body text-muted-foreground">
+          Thanks. A reply goes to the address you gave.
+        </p>
+        <Button
           type="button"
+          variant="outline"
+          className="mt-4"
           onClick={() => {
             setName("");
             setEmail("");
             setMessage("");
             setStatus("idle");
           }}
-          className="mt-2 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400"
         >
           Send another
-        </button>
+        </Button>
       </div>
     );
   }
@@ -113,10 +114,10 @@ export function ContactForm({ initialSuccess = false, initialError }: Props) {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label htmlFor="name" className="text-sm font-medium">
+          <label htmlFor="name" className="text-body-sm font-medium">
             Name
           </label>
-          <span className="text-xs text-muted-foreground">{name.length}/60</span>
+          <span className="figure text-caption text-muted-foreground">{name.length}/60</span>
         </div>
         <Input
           id="name"
@@ -132,7 +133,7 @@ export function ContactForm({ initialSuccess = false, initialError }: Props) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label htmlFor="email" className="text-body-sm font-medium">
           Email
         </label>
         <Input
@@ -149,10 +150,10 @@ export function ContactForm({ initialSuccess = false, initialError }: Props) {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label htmlFor="message" className="text-sm font-medium">
+          <label htmlFor="message" className="text-body-sm font-medium">
             Message
           </label>
-          <span className="text-xs text-muted-foreground">
+          <span className="figure text-caption text-muted-foreground">
             {message.length}/1000
           </span>
         </div>
@@ -170,22 +171,18 @@ export function ContactForm({ initialSuccess = false, initialError }: Props) {
       </div>
 
       {status === "error" && (
-        <p className="rounded-lg border border-red-500/20 bg-red-500/5 px-3.5 py-2.5 text-sm text-red-500">
+        <p
+          role="alert"
+          className="flex items-start gap-2 border-y border-destructive/40 py-2.5 text-body-sm text-destructive"
+        >
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
           {errorMsg}
         </p>
       )}
 
-      <Button
-        type="submit"
-        disabled={status === "loading"}
-        className="group gap-2 bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
-      >
-        {status === "loading" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Send className="size-4 transition-transform group-hover:translate-x-0.5" />
-        )}
-        {status === "loading" ? "Sending…" : "Send Message"}
+      <Button type="submit" disabled={status === "loading"} className="h-10 self-start">
+        {status === "loading" ? <Loader2 className="animate-spin" aria-hidden /> : <Send aria-hidden />}
+        {status === "loading" ? "Sending" : "Send message"}
       </Button>
     </form>
   );

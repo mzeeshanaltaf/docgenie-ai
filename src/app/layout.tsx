@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { MotionProvider } from "@/components/motion-provider";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND_HEX } from "@/lib/brand";
 import "./globals.css";
 
 // Self-hosted Umami analytics. NEXT_PUBLIC_* → inlined at BUILD time, so these
@@ -28,27 +29,28 @@ const mono = Spline_Sans_Mono({
   display: "swap",
 });
 
+const SITE_TITLE = "DocGenie: ask your documents, check the source";
+const SITE_DESCRIPTION =
+  "Chat with PDF, DOCX, TXT and CSV files. Every answer cites the page it came from, opens the original on click, and shows the search and timings behind it.";
+
 export const metadata: Metadata = {
   title: {
-    default: "DocGenie — Chat With Your Documents",
+    default: SITE_TITLE,
     template: "%s | DocGenie",
   },
-  description:
-    "Upload PDFs, Word docs, text files, or spreadsheets and chat with them using AI. Get instant answers from your documents.",
+  description: SITE_DESCRIPTION,
   metadataBase: new URL("https://docgenie.zeeshanai.cloud"),
   openGraph: {
     type: "website",
     url: "https://docgenie.zeeshanai.cloud",
-    title: "DocGenie — Chat With Your Documents",
-    description:
-      "Upload documents and ask questions. DocGenie reads, understands, and answers instantly using AI.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     siteName: "DocGenie",
   },
   twitter: {
     card: "summary_large_image",
-    title: "DocGenie — Chat With Your Documents",
-    description:
-      "Upload documents and ask questions. DocGenie reads, understands, and answers instantly using AI.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   robots: {
     index: true,
@@ -59,9 +61,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // The paper colors from globals.css (see lib/brand.ts for the oklch source).
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafd" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1016" },
+    { media: "(prefers-color-scheme: light)", color: BRAND_HEX.paper },
+    { media: "(prefers-color-scheme: dark)", color: BRAND_HEX.paperDark },
   ],
 };
 
@@ -70,9 +73,9 @@ const organizationSchema = {
   "@type": "Organization",
   name: "DocGenie",
   url: "https://docgenie.zeeshanai.cloud",
-  logo: "https://docgenie.zeeshanai.cloud/icon.png",
+  logo: "https://docgenie.zeeshanai.cloud/logo.svg",
   description:
-    "AI-powered document Q&A platform. Upload PDFs, Word docs, spreadsheets, and text files and get instant AI-powered answers.",
+    "DocGenie is a document question-answering service: answers are grounded in the uploaded file and cite the page they came from.",
 };
 
 export default function RootLayout({

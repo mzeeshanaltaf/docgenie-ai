@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/marketing/navbar";
-import { Footer } from "@/components/marketing/footer";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { MarketingPage } from "@/components/marketing/marketing-page";
 import { JsonLd } from "@/components/seo/json-ld";
-import { FileText, MessageSquare, Zap, Shield } from "lucide-react";
+import { SITE_URL } from "@/components/marketing/landing/content";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Learn about DocGenie — our mission to help people extract knowledge from documents using AI.",
+    "DocGenie is a working document question-answering system, built so its retrieval, agent and costs can be inspected.",
   alternates: { canonical: "/about" },
 };
 
@@ -15,145 +16,67 @@ const breadcrumbSchema = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: "https://docgenie.zeeshanai.cloud" },
-    { "@type": "ListItem", position: 2, name: "About", item: "https://docgenie.zeeshanai.cloud/about" },
+    { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+    { "@type": "ListItem", position: 2, name: "About", item: `${SITE_URL}/about` },
   ],
 };
 
-const values = [
+const NOTES: { title: string; body: string }[] = [
   {
-    icon: MessageSquare,
-    title: "Answers over searching",
-    description:
-      "We believe you shouldn't have to read 50 pages to find one number. Ask a question, get an answer — instantly.",
+    title: "What it is",
+    body: "A document question-answering system you can use. You upload a PDF, DOCX, TXT or CSV, ask a question, and get an answer that cites the page it came from. The original opens at that page with the passage marked.",
   },
   {
-    icon: Zap,
-    title: "Speed that respects your time",
-    description:
-      "Documents are processed in seconds, and AI responses arrive in under 5 seconds. Because your time matters.",
+    title: "Why it shows its work",
+    body: "A chat box that returns confident text proves nothing. Here the tool calls, the search, the timings and the token counts sit under each answer, so you can judge the answer and the system that produced it.",
   },
   {
-    icon: Shield,
-    title: "Privacy by design",
-    description:
-      "Your documents are processed securely. We never sell your data; it is shared only with the AI provider (OpenAI) that answers your questions.",
+    title: "What it does not do",
+    body: "It does not replace reading a document that matters. The model can misread a passage, which is why every claim carries a source. There is also no paid plan: the free preview is the whole offer.",
   },
   {
-    icon: FileText,
-    title: "Accurate, not generic",
-    description:
-      "Every answer is sourced directly from your document content — not hallucinated or pulled from generic knowledge.",
+    title: "How it is built",
+    body: "A Next.js front end, a private FastAPI backend, Postgres with pgvector for retrieval, and private object storage for the files. The landing page lists the stack and the limits with their real values.",
   },
 ];
 
 export default function AboutPage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <MarketingPage>
       <JsonLd data={breadcrumbSchema} />
-      <Navbar />
+      <div className="page-container pt-12 pb-24 md:pt-16 md:pb-32">
+        <header className="page-grid gap-y-6 pb-12 md:pb-16">
+          <h1 className="col-span-4 text-section text-balance md:col-span-12 lg:col-span-8">
+            A document Q&amp;A system built to be inspected.
+          </h1>
+        </header>
 
-      <main className="flex-1">
-        {/* Hero */}
-        <section className="border-b border-border/50 px-4 py-20 md:py-28">
-          <div className="container mx-auto max-w-6xl">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              About us
-            </p>
-            <h1
-              className="mt-4 max-w-3xl text-4xl tracking-tight md:text-5xl lg:text-6xl"
-              style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
+        <div className="border-b border-rule">
+          {NOTES.map((n) => (
+            <section
+              key={n.title}
+              aria-label={n.title}
+              className="page-grid gap-y-2 border-t border-rule py-6 md:py-8"
             >
-              Built to make documents{" "}
-              <span className="text-emerald-600 dark:text-emerald-400">talk back</span>.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-              DocGenie was born from a simple frustration: important answers are buried in
-              documents nobody has time to read. We built the tool we wished we had — one that
-              reads your documents and answers your questions instantly using AI.
-            </p>
-          </div>
-        </section>
-
-        {/* Mission */}
-        <section className="px-4 py-20">
-          <div className="container mx-auto max-w-6xl">
-            <div className="grid gap-16 md:grid-cols-2 md:items-center">
-              <div>
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Our mission
-                </p>
-                <h2
-                  className="mt-4 text-3xl tracking-tight md:text-4xl"
-                  style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
-                >
-                  Make knowledge accessible from any document
-                </h2>
-                <p className="mt-4 leading-relaxed text-muted-foreground">
-                  Every day, people waste hours searching through PDFs, reports, and spreadsheets
-                  for answers that should take seconds to find. DocGenie bridges that gap.
-                </p>
-                <p className="mt-4 leading-relaxed text-muted-foreground">
-                  Our AI reads and understands your documents, then answers your questions with
-                  precise, sourced responses. Whether it&apos;s a financial report, research paper,
-                  or employee handbook — just ask.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card p-8">
-                <div className="grid grid-cols-2 gap-6">
-                  {[
-                    ["4", "Supported file types"],
-                    ["< 5s", "Response time"],
-                    ["5MB", "Max file size"],
-                    ["25", "Free messages"],
-                  ].map(([stat, label]) => (
-                    <div key={label}>
-                      <p className="font-mono text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                        {stat}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Values */}
-        <section className="border-t border-border bg-muted/20 px-4 py-20">
-          <div className="container mx-auto max-w-6xl">
-            <div className="mb-14 text-center">
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Our values
+              <h2 className="col-span-4 text-title md:col-span-12 lg:col-span-4">{n.title}</h2>
+              <p className="measure col-span-4 text-body text-muted-foreground md:col-span-12 lg:col-span-7 lg:col-start-6">
+                {n.body}
               </p>
-              <h2
-                className="mt-3 text-3xl tracking-tight md:text-4xl"
-                style={{ fontFamily: "var(--font-display), Georgia, serif", fontStyle: "italic" }}
-              >
-                What we stand for
-              </h2>
-            </div>
+            </section>
+          ))}
+        </div>
 
-            <div className="grid gap-6 sm:grid-cols-2">
-              {values.map(({ icon: Icon, title, description }) => (
-                <div key={title} className="rounded-xl border border-border bg-card p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-                    <Icon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <h3 className="mt-4 font-semibold">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {description}
-                  </p>
-                </div>
-              ))}
-            </div>
+        <div className="page-grid mt-10 gap-y-4">
+          <div className="col-span-4 flex flex-wrap gap-3 md:col-span-12 lg:col-span-7 lg:col-start-6">
+            <Button asChild>
+              <Link href="/#pipeline">How an answer is made</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/contact">Contact</Link>
+            </Button>
           </div>
-        </section>
-      </main>
-
-      <Footer />
-    </div>
+        </div>
+      </div>
+    </MarketingPage>
   );
 }

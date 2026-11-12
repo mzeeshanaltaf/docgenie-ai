@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 20 20" fill="none">
+  <title>DocGenie</title>
+  <rect width="20" height="20" rx="3" fill="#111820"/>
+  <path d="M5 7h10M5 10h10M5 13h5.5" stroke="#f8fafd" stroke-width="1.5" stroke-linecap="square"/>
+</svg>
