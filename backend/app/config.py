@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 900.0  # flex tier can queue for a long time
     flex_fallback_tier: str = "default"  # only relevant if CHAT_SERVICE_TIER=flex
     agent_max_steps: int = 8
+    # USD per 1M tokens for the chat/title/OCR model (gpt-6-luna has no public price known to this
+    # repo). Unset -> `llm_usage.cost_usd` stays NULL. `flex_price_multiplier` scales these for the
+    # flex tier (flex is billed at a discount).
+    llm_input_price_per_m: float | None = None
+    llm_output_price_per_m: float | None = None
+    flex_price_multiplier: float = 0.5
+    title_max_chars: int = 60
 
     # --- Limits ---
     max_upload_mb: int = 20
@@ -72,6 +79,14 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 8
     rrf_k: int = 60
     history_window: int = 20
+    retrieval_candidates: int = 30  # per ranking (semantic / keyword) before fusion
+    snippet_chars: int = 240  # citation snippet length
+
+    # --- Agent tools ---
+    doc_text_max_tokens: int = 25_000  # get_document_text truncation budget (about 4 chars/token)
+    query_max_rows: int = 100  # query_table result cap
+    query_timeout_ms: int = 5000  # query_table statement_timeout
+    tool_result_max_chars: int = 24_000  # hard cap on any tool output sent back to the model
 
     # --- Credits ---
     signup_doc_credits: int = 5

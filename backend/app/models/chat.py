@@ -32,7 +32,8 @@ class ChatMessage(Base):
     __table_args__ = (
         CheckConstraint("role in ('user','assistant')", name="ck_chat_messages_role"),
         CheckConstraint(
-            "status in ('streaming','complete','error','stopped')", name="ck_chat_messages_status"
+            "status in ('streaming','complete','error','stopped','incomplete')",
+            name="ck_chat_messages_status",
         ),
         Index("ix_chat_messages_session_created", "session_id", "created_at"),
         Index("ix_chat_messages_user", "user_id"),

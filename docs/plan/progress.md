@@ -11,7 +11,7 @@ No secrets anywhere in this file: record env var names and where their values li
 
 ## Current state
 
-_Last updated by: Phase 2 (done)_
+_Last updated by: Phase 3 (done)_
 
 ### How to run locally
 - Frontend: `npm run dev` (localhost:3000)
@@ -19,10 +19,12 @@ _Last updated by: Phase 2 (done)_
 - Backend (from `backend/`):
   - install: `uv sync`
   - run: `uv run uvicorn app.main:app --port 8765`
-  - migrate: `uv run alembic upgrade head` (head `0001`; Phase 2 added no migration)
+  - migrate: `uv run alembic upgrade head` (head `0002`: Phase 3 allowed the `incomplete` chat message status; applied to the shared database on 2026-11-12)
   - NOTE: port 8000 on the dev machine is occupied by an unrelated process; use `--port 8765` (or any free port)
   - tests: `uv run pytest -q`. Needs the MinIO container above and `DATABASE_URL` in `backend/.env`. Takes about 4 minutes because the DB is the remote VPS (about 1 s per round trip); the 40 unit tests alone (`uv run pytest tests/test_parsing_chunking.py tests/test_auth_and_errors.py tests/test_config.py -q`) take under a second. If the DB or MinIO is unreachable the integration tests skip instead of failing.
   - real end-to-end ingestion check (real OpenAI; start the server first): `PYTHONPATH=. uv run python scripts/e2e_ingest.py http://localhost:8765`. It cleans up after itself.
+  - real end-to-end chat check (real OpenAI, a few cents; start the server first): `PYTHONPATH=. uv run python scripts/e2e_chat.py http://localhost:8765`. Uploads a PDF and a CSV as a throwaway user, chats three times over real SSE (PDF question, CSV question, a harder one that triggers reasoning), checks events/citations/metrics/title/credits, cleans up.
+  - stop a dev server on Windows: `Get-NetTCPConnection -LocalPort 8765 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }` (PowerShell)
   - re-grant signup credits to existing Better Auth users (idempotent): `PYTHONPATH=. uv run python scripts/regrant_signup_credits.py [--dry-run]`
   - model smoke test: `PYTHONPATH=. uv run python scripts/smoke_models.py` (and `scripts/smoke_flex_probe.py`)
   - read-only DB inspection: `PYTHONPATH=. uv run python scripts/inspect_db.py [table ...]`
@@ -44,6 +46,8 @@ _Last updated by: Phase 2 (done)_
 | `CONTACT_NOTIFY_EMAIL` | backend | declared in `app/config.py` + `backend/.env.example`, not set yet (Phase 4) | 1 |
 | `TEST_S3_BUCKET` (optional) | pytest | overrides the test bucket (default `docgenie-test`); the suite also forces `DB_SCHEMA=docgenie_test_<random>` | 2 |
 | All tunables (`CHAT_MODEL`, `MAX_UPLOAD_MB`, `CHUNK_SIZE`, ...) | backend | defaults in `backend/app/config.py`; list in `backend/.env.example` | 1 |
+| Chat/agent tunables: `AGENT_MAX_STEPS` (8), `HISTORY_WINDOW` (20), `RETRIEVAL_TOP_K` (8), `RETRIEVAL_CANDIDATES` (30), `RRF_K` (60), `SNIPPET_CHARS` (240), `DOC_TEXT_MAX_TOKENS` (25000), `QUERY_MAX_ROWS` (100), `QUERY_TIMEOUT_MS` (5000), `TOOL_RESULT_MAX_CHARS` (24000), `TITLE_MAX_CHARS` (60) | backend | defaults in `backend/app/config.py` | 3 |
+| `LLM_INPUT_PRICE_PER_M`, `LLM_OUTPUT_PRICE_PER_M` (USD per 1M tokens for `gpt-6-luna`), `FLEX_PRICE_MULTIPLIER` (0.5) | backend | **not set**: no price is known to this repo, so `llm_usage.cost_usd` is `NULL` for chat/title/OCR until the user supplies them in `backend/.env` | 3 |
 | Ingestion tunables: `OCR_MIN_CHARS_PER_PAGE` (25), `OCR_REASONING_EFFORT` (low), `OCR_RENDER_SCALE` (2.0), `OCR_CONCURRENCY` (4), `EMBEDDING_BATCH_SIZE` (64), `CSV_ROWS_PER_CHUNK_CHARS` (1500), `INGESTION_STALE_MINUTES` (10), `INGESTION_SWEEP_INTERVAL_S` (300) | backend | defaults in `backend/app/config.py` | 2 |
 | `INTERNAL_API_KEY` (same value) | Next.js proxy | must be added to root `.env.local` in Phase 5 | 5 |
 
@@ -51,7 +55,11 @@ _Last updated by: Phase 2 (done)_
 - **Raising errors:** `from app.errors import ApiError, ErrorCode`; `raise ApiError(ErrorCode.INSUFFICIENT_CREDITS)` (optional `message=`, `details=`). Body is `{success:false, status:<CODE>, message, details}`. Codes and HTTP map: `backend/app/errors.py`.
 - **Auth deps:** `verify_internal_key` is applied to the whole `/v1` router in `app/main.py`. User-scoped routes take `user_id: CurrentUserId` (`from app.deps import CurrentUserId`; `current_user_id` is the underlying dependency). New routers are added via `v1.include_router(...)` in `create_app()`.
 - **DB:** `app.db.get_session` (FastAPI dependency, AsyncSession), `Base` (metadata schema `document_genie`). Models in `backend/app/models/`. Search path is `document_genie,public`.
-- **LLM:** `app.services.llm.respond(...)` is a thin non-streaming Responses wrapper; `app.services.llm.get_client()` returns the shared `AsyncOpenAI`. `PRICING` in `app/config.py` now has `("text-embedding-3-small", "default")` only; `gpt-6-luna` prices are still missing, so chat/OCR cost is logged as `NULL` until Phase 3 fills them.
+- **LLM:** `app.services.llm.respond(...)` is a thin non-streaming Responses wrapper; `app.services.llm.get_client()` returns the shared `AsyncOpenAI`; `llm.stream_response(...)` is the streaming call the agent uses (stateless `store=False`, encrypted reasoning items replayed, flex to `FLEX_FALLBACK_TIER` retry); `llm.generate_text(...)` is the one-shot call used for titles. Cost: `PRICING` in `app/config.py` has the embedding price; chat/title/OCR cost comes from `LLM_INPUT_PRICE_PER_M` / `LLM_OUTPUT_PRICE_PER_M` (unset, so `cost_usd` is `NULL`; see Known issues).
+- **Chat stream (Phase 5 proxies it, Phase 7 consumes it):** the exact SSE contract, with one real example per event, is in [backend/docs/chat-stream.md](../../backend/docs/chat-stream.md). Build the adapter from that file.
+- **System prompt:** `backend/app/prompts.py` (`SYSTEM_PROMPT`, `SELECTION_NOTE`, `TITLE_PROMPT`).
+- **Chat internals (for debugging):** `services/chat.py` (`prepare_turn` = session upsert + history + credit + user message in one transaction; `stream_turn` = SSE frames and persistence; `generate_title`; `drain_background()` waits for detached persistence tasks), `services/agent.py` (`run_agent`, `AgentStats`, `Accumulator` builds `parts`), `services/tools.py` (`TOOL_DEFINITIONS`, `run_tool`, `ToolContext` with the numbered citation `sources`), `services/retrieval.py` (`search_chunks`, `Hit`), `services/sql_guard.py` (`validate_query`, `run_query`, `rows_columns`).
+- **`query_table` SQL rules** (`sql_guard.py`): exactly one `SELECT` over a relation called `rows` (unqualified); columns are the CSV headers plus `row_num`; `integer`/`number` columns are cast safely (non-numeric cells become NULL). Rejected: any other statement type, multiple statements, `WITH`, `UNION`/`INTERSECT`/`EXCEPT`, `INTO`, `FOR UPDATE`, placeholders, any other table or a schema-qualified name, set-returning/table functions in `FROM`, and every function not on `ALLOWED_FUNCTIONS` (aggregates, `ROUND/ABS/...`, string functions, `COALESCE/NULLIF/CAST`, `DATE_TRUNC/EXTRACT`, window functions, regex match). Executed SQL is regenerated from the validated AST, run in a `READ ONLY` transaction with `statement_timeout`, wrapped in a hard row cap. Known limits: sqlglot's Postgres dialect decides what parses (exotic Postgres syntax is rejected, not run); `TABLESAMPLE` on `rows` is accepted (harmless); there are no CTEs, so multi-step SQL must use subqueries.
 - **Credits (`app/services/credits.py`)**: all functions work in the caller's transaction and never commit. `UnitType = "document" | "message"`.
   - `reserve(session, user_id, unit_type, *, amount=1, reference_id=None, file_name=None, description=None) -> None`: atomic conditional UPDATE plus a `usage` ledger row; raises `ApiError(INSUFFICIENT_CREDITS)` (402). A user with no account row gets the signup grant lazily, then the reservation is retried.
   - `refund(session, user_id, unit_type, *, amount=1, reference_id=None, file_name=None, description=None) -> bool`: balance + ledger `refund` row; idempotent per `(reference_id, unit_type)` (returns False if already refunded). Phase 3 must pass the message id as `reference_id`.
@@ -74,6 +82,15 @@ _Last updated by: Phase 2 (done)_
 | `GET /documents/{id}` | `DocumentOut`; the frontend polls it while `status == "processing"` |
 | `GET /documents/{id}/content[?download=true]` | streams the original (`Content-Type` = stored mime, `inline` or `attachment`) |
 | `DELETE /documents/{id}` | `204`; object, chunks and rows removed |
+| `POST /chat/stream` | SSE, see [chat-stream.md](../../backend/docs/chat-stream.md). Body `{session_id, message, document_ids?}`. `402` before streaming if the message balance is 0 |
+| `GET /sessions` | `{sessions: [SessionOut]}`, most recently active first. `SessionOut` = `{id, title, document_ids (null = all documents), created_at, updated_at}` |
+| `GET /sessions/{id}/messages` | `{messages: [MessageOut]}`, oldest first. `MessageOut` = `{id, role, content, parts, metrics, status (complete\|incomplete\|error), model, created_at, feedback}`; `parts` is the ordered `reasoning\|tool\|text\|citation\|error` list and `metrics` the object from `message.end` (both described in chat-stream.md); `feedback` is `null` or `{message_id, rating, reason, comment}` |
+| `PATCH /sessions/{id}` | body `{title?, document_ids?}`, only sent fields change; `document_ids: null` or `[]` = all documents. Returns `SessionOut` |
+| `DELETE /sessions/{id}` | `204`; messages and feedback cascade |
+| `PUT /messages/{id}/feedback` | body `{rating: like\|dislike, reason?, comment?}`; replaces earlier feedback; returns `{message_id, rating, reason, comment}`. Only assistant messages (`422` otherwise) |
+| `DELETE /messages/{id}/feedback` | `204`, idempotent |
+
+Another user's session, message or document is always `404 NOT_FOUND`, never `403`.
 
 `DocumentOut` = `{id, file_name, mime_type, file_size, num_pages (null for CSV), status: processing|ready|failed, error_code, ocr_used, csv_schema, created_at}`. `storage_key` and `checksum` are never returned. A document of another user is a `404 NOT_FOUND`, not a 403.
 
@@ -86,6 +103,15 @@ _Last updated by: Phase 2 (done)_
 - **DB tests use a throwaway schema on the configured `DATABASE_URL`** (`docgenie_test_<random>`, dropped at the end) because that is the only Postgres with pgvector here; they never touch `document_genie`.
 - `gpt-6-luna` confirmed for flex tier, `reasoning.effort=medium`, reasoning summaries and image input (see Phase 1 log). Assumption closed.
 - **Service tier default changed from `flex` to `default` (user decision, 2026-11-11)** because flex 429s often. `CHAT_SERVICE_TIER=flex` remains an opt-in env override; `FLEX_FALLBACK_TIER` only matters in that case. Phase 3 should still catch the flex 429 and fall back if flex is ever enabled.
+- **Phase 3 – copy/like/dislike assumption: NOT confirmed with the user.** The session ran non-interactively, so the question could not be asked. Implemented as planned: feedback is like/dislike only (`reason`, `comment` optional); copy is client-only and never sent to the backend. Phase 7 should confirm it before building the toolbar. It is cheap to change either way.
+- **Phase 3 – stateless Responses calls.** Every model call sets `store=False` and replays the conversation itself: history, the output items so far (reasoning items included, via `include=["reasoning.encrypted_content"]`) and the tool results. Nothing is retained at OpenAI and the loop does not depend on `previous_response_id`. Verified live with `gpt-6-luna`.
+- **Phase 3 – message status `incomplete`.** Phase 1's check constraint only knew `stopped`; migration `0002` added `incomplete` (client disconnect, or a failure after some answer text). `stopped` and `streaming` remain allowed but are not written.
+- **Phase 3 – credit is spent unless no answer text was produced.** Reserved before streaming (402 if empty). Refunded when the run ends with no answer text: LLM error, empty answer, or disconnect before any text. Kept when any answer text was delivered (the message is then `incomplete`).
+- **Phase 3 – citations are the sources the answer cites.** Tool results are numbered `[n]` per turn; after the answer, one `citation` event per `[n]` marker actually present in the text. Replayed history has the old `[n]` markers stripped (numbers restart each turn). Page ranges are chunk-level (one chunk can span two pages).
+- **Phase 3 – the chat request may carry `document_ids`.** The plan's `PATCH /sessions/{id}` cannot set a selection before the session exists (the first message creates it), so `POST /chat/stream` accepts an optional `document_ids` (omitted = keep, list = set, `[]`/null = all). PATCH remains for later changes.
+- **Phase 3 – extra `session.title` SSE event** after `message.end` (not in the plan's event list) so the UI learns the title without a second call; it is additive.
+- **Phase 3 – the system prompt says "skip `list_documents` before `search_documents`".** The first live run always listed first, costing a whole extra model round trip; the prompt change dropped the PDF question from 3 steps to 2.
+- **Phase 3 – gpt-6-luna prices are not known to the repo.** Cost uses `LLM_INPUT_PRICE_PER_M` / `LLM_OUTPUT_PRICE_PER_M` when the user sets them (flex scaled by `FLEX_PRICE_MULTIPLIER`); otherwise `cost_usd` stays `NULL`.
 - `/v1/health` also requires `X-Internal-Key` (plan: every request). The Dockerfile health check sends it.
 - `user_id` columns are `text` with no FK to Better Auth's `user` table (its id is `text`); Phase 4 account deletion must delete by `user_id`.
 - Alembic's version table is `document_genie.alembic_version` (the server is shared; other schemas have their own).
@@ -93,7 +119,11 @@ _Last updated by: Phase 2 (done)_
 - Python deps pinned by `backend/uv.lock`; Python 3.12 only.
 
 ### Known issues and deferred work
-- Flex tier returns intermittent `429 Flex processing is temporarily unavailable` (4 of 5 tries in one probe). Default tier is now `default`; if flex is re-enabled, Phase 3 must implement the `FLEX_FALLBACK_TIER` retry.
+- **Flex tier** is opt-in (`CHAT_SERVICE_TIER=flex`); the fallback retry on `FLEX_FALLBACK_TIER` is implemented (Phase 3). Measured live (Phase 3, 27 flex calls with a trivial one-word prompt): 6 to 15 s per call (default tier: about 1 to 2 s per model call), and "Flex processing is temporarily unavailable" showed up once (4 of 5 in the Phase 1 probe, so the rate varies a lot). It arrives either as an HTTP 429 at request time or, as seen in that one case, as an `APIError` from inside the open stream about 1.7 s in; the retry handles both when no content has been streamed yet. The in-stream shape was only reproduced with a fake in tests (the live fix was not re-observed because the unavailability did not recur in the 21 calls after it). Not recommended as the default for an interactive chat.
+- **`gpt-6-luna` prices are still unknown** to the repo, so `llm_usage.cost_usd` is `NULL` for chat, title and OCR. Set `LLM_INPUT_PRICE_PER_M` / `LLM_OUTPUT_PRICE_PER_M` in `backend/.env` (the user has to supply them); nothing else needs to change.
+- **Latency on the dev setup:** `message.start` arrives about 2 to 4 s after the request because `prepare_turn` makes roughly 8 round trips to the remote VPS database (about 1 s each). With the database next to the backend (production) this is a few tens of ms. The same remote latency inflates `search_documents` (about 3 to 5 s) and therefore `ttft_ms`.
+- **Reasoning summaries are optional**: easy questions often produce none (`reasoning_tokens` 0). The UI must not wait for or require them; they come as Markdown with a bold heading line.
+- **A turn that is cut off mid-tool-call** keeps the user message and an `incomplete` assistant message; there is no "resume". If the backend process itself is killed mid-stream, no assistant row is written and the reserved credit is not refunded (no sweep exists for chat, unlike ingestion). Rare; revisit if it ever matters.
 - Test and e2e runs are slow (about 1 s per DB round trip) because the dev database is the remote VPS Postgres. Production will have the database next to the backend.
 - Existing (pre-rebuild) users: handled. `credits.reserve` grants the signup credits lazily, and `scripts/regrant_signup_credits.py` was run once on 2026-11-11 (4 users granted 5 + 25).
 - The `STORAGE_FAILED` ingestion code exists but nothing sets it yet (the object is uploaded synchronously before ingestion starts; a failure there is a 503 at upload time with the row removed and the credit refunded).
@@ -185,4 +215,47 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
   - Phase 11: a production bucket and `S3_*` values come from the Coolify MinIO service (`add-minio-storage-to-coolify`), and the container is single-process, so the in-process background tasks are fine; if it ever runs several workers the sweep still works because it is age-based and race-safe.
   - A one-line status of the old `bytea` data: nothing migrated, by plan.
 - **Notes for the next session:** Phase 3 can start. Start the MinIO container first if you want to run the whole test suite. Chunks already carry `page_start` / `page_end` for citations (null for CSV). Embeddings are `text-embedding-3-small` at 1536 dimensions.
+
+### Phase 3: Retrieval, agent and chat stream (2026-11-12)
+
+- **Status:** done
+- **Commit:** see the status table in README.md
+- **What was built:**
+  - `backend/app/services/`: `retrieval.py` (hybrid RRF search, one SQL statement), `sql_guard.py` (safe CSV SQL), `tools.py` (the four tools + numbered citation sources), `agent.py` (hand-written tool loop, `AgentStats`, `Accumulator`), `chat.py` (turn preparation, SSE streaming, persistence, titles; not in the plan's file list), `llm.py` (extended: `stream_response` with flex fallback, `generate_text`, `LlmError`), `usage.py` (cost from env prices).
+  - `backend/app/routers/`: `chat.py` (`POST /v1/chat/stream`), `sessions.py`, `feedback.py`; `schemas/chat.py`; `prompts.py` (system and title prompts); `main.py` wires the three routers.
+  - `backend/alembic/versions/0002_chat_message_incomplete_status.py` (applied) and the matching model constraint.
+  - `backend/docs/chat-stream.md`: the SSE contract with real examples.
+  - Config: new tunables in `app/config.py` and `.env.example`; `sqlglot` added to `pyproject.toml`.
+  - Tests (98 new, 175 total): `tests/test_sql_guard.py`, `tests/test_retrieval_tools.py`, `tests/test_chat.py`, plus `tests/fake_llm.py` (scripted streaming Responses fake) and `make_document`/`one_hot` in `tests/factories.py`; `conftest.py` patches `llm.get_client` in the `fake_openai` fixture.
+  - `backend/scripts/e2e_chat.py` (live end-to-end check).
+- **Exit criteria:**
+  - PASS: a chat about an uploaded PDF streams a cited answer, a `search_documents` trace and metrics (live run through uvicorn with the real model, `scripts/e2e_chat.py`). **Reasoning**: `reasoning.delta` events were seen live on the harder question; easy questions produce none because the model skips reasoning (see Known issues), so the "streams reasoning" part depends on the question.
+  - PASS: a chat about a CSV uses `query_table` successfully (live: per-region totals correct).
+  - PASS: the session gets a server-generated title after the first turn (live, e.g. "Notice Period for Terminating the Agreement").
+  - PASS: all tests: 175 passed (full run 173 in about 9 minutes, plus the two flex-in-stream tests; `tests/test_chat.py` re-run: 24 passed).
+  - Plan test items: hybrid search keyword-only and semantic-only matches (`test_hybrid_returns_keyword_only_and_semantic_only_matches`), `sql_guard` rejections incl. writes/other tables/multiple statements/escaping functions (parametrized, plus real-DB read-only and timeout checks), no cross-user data from retrieval and `query_table`, the stream contract (order, reasoning + tool events, metrics in `message.end`), 402 before streaming, refund on failure, disconnect stored as `incomplete` (also verified on a real uvicorn by dropping the connection), cross-user denial on session, message and feedback endpoints.
+- **Deviations from the phase file:**
+  - Added `services/chat.py` (orchestration) and `prompts.py`; the plan listed neither.
+  - Chat status `incomplete` needed migration `0002` (Phase 1's constraint only had `stopped`).
+  - `POST /chat/stream` accepts an optional `document_ids` (see Decisions); an extra `session.title` event follows `message.end`.
+  - The error codes in the stream are `LLM_BUSY`, `LLM_TIMEOUT`, `LLM_ERROR`, `INTERNAL_ERROR`; `INSUFFICIENT_CREDITS` is the pre-stream HTTP 402 only, and there is no `INTERRUPTED` event because a disconnected client cannot receive one.
+  - No `gpt-6-luna` prices could be filled into `PRICING` (not known to the repo): cost is configurable by env and `NULL` until set.
+  - `get_document_text` returns whitespace-normalised text (chunks are stored stripped), with `[Page N]` markers.
+- **Decisions made:** see Current state > Decisions (copy/like/dislike unconfirmed, stateless Responses calls, `incomplete` status, credit and refund rule, citation rule, `document_ids` on the chat request, `session.title` event, prompt change, prices).
+- **Phase-specific handoff items:**
+  - *The exact SSE contract:* [backend/docs/chat-stream.md](../../backend/docs/chat-stream.md), one real example per event (`message.start`, `reasoning.delta`, `tool.start`, `tool.end`, `text.delta`, `citation`, `error`, `message.end`, `session.title`).
+  - *Response shapes of the session, message and feedback endpoints, including `parts` and `metrics`:* Current state > HTTP endpoints, and the "How a turn is stored" section of chat-stream.md.
+  - *Where the system prompt lives:* `backend/app/prompts.py`.
+  - *Flex fallback in practice:* Known issues (6 to 15 s per call on flex vs 1 to 2 s on default; unavailable 1 of 27 calls now, 4 of 5 in Phase 1; arrives as a 429 or as an in-stream `APIError`; both handled; the in-stream fix was tested with a fake only).
+  - *`sqlglot` limits in `sql_guard`:* Current state > Contracts > `query_table` SQL rules. Verified accepted: joins and self-joins on `rows`, subqueries, window functions, `FILTER`, `PERCENTILE_CONT ... WITHIN GROUP`, `ILIKE`, `~`, `CASE`, `EXISTS`, casts. Verified rejected: DDL/DML, `COPY`, `SET`, `WITH`, `UNION`, `INTO`, `FOR UPDATE`, placeholders, other tables, schema-qualified names, `pg_read_file`, `pg_sleep`, `set_config`, `current_setting`, `version()`, `dblink`, `lo_import`, `nextval`, `query_to_xml`, `generate_series`/`pg_ls_dir` in `FROM`, `current_user`/`user`/`session_user`.
+  - *Copy/like/dislike assumption:* implemented as like/dislike (copy client-only) but **not confirmed with the user** (non-interactive session). Phase 7 should ask.
+- **How to verify this phase still works:** MinIO up (`docker compose --env-file backend/.env -f docker-compose.dev.yml up -d` from the repo root); from `backend/`: `uv run alembic current` (expect `0002`); `uv run pytest -q` (175 tests, about 9 minutes; the offline SQL-guard tests run in under a second: `uv run pytest tests/test_sql_guard.py::test_allows_plain_selects_over_rows tests/test_sql_guard.py::test_rejects_unsafe_sql -q`); start the server (`uv run uvicorn app.main:app --port 8765`) and run `PYTHONPATH=. uv run python scripts/e2e_chat.py http://localhost:8765` (live model, a few cents).
+- **Open issues / follow-ups:**
+  - User: provide `gpt-6-luna` prices (`LLM_INPUT_PRICE_PER_M`, `LLM_OUTPUT_PRICE_PER_M`) so `cost_usd` is filled.
+  - Phase 4: the dashboard endpoint should read `llm_usage` / balances; `chat_sessions`, `chat_messages`, `message_feedback`, `llm_usage` rows must be deleted by `user_id` on account deletion (and the account export may include sessions/messages).
+  - Phase 5: proxy `POST /v1/chat/stream` **unchanged** (stream the body through, keep the `Content-Type: text/event-stream` and `Cache-Control` headers, forward the client abort so the backend cancels the model run; do not buffer); also add proxies for sessions, messages, feedback. A 402 comes back as JSON before any stream.
+  - Phase 7: build the adapter from `backend/docs/chat-stream.md`; reasoning text is Markdown and optional; `[n]` markers in the answer pair with `citation` events (chunk-level page ranges; CSV citations carry the SQL as the snippet); tool outputs are intentionally not streamed (only a summary); the title arrives after `message.end`; confirm copy/like/dislike with the user.
+  - Phase 8: map `LLM_BUSY` / `LLM_TIMEOUT` / `LLM_ERROR` / `INTERNAL_ERROR` to readable messages, with a retry action (the credit is refunded when no answer text was produced).
+  - Phase 11: `hnsw.iterative_scan` is set per query via `set_config` (pgvector 0.8 feature, present on the dev server); check the production database's pgvector version. A chat run killed together with the backend process leaves a spent credit and no assistant message (no sweep), acceptable for now.
+- **Notes for the next session:** Phase 4 can start (it does not depend on the chat stream's wire format, only on tables and balances). The dev server is not left running. A real-model check costs a few cents (`scripts/e2e_chat.py`). Remember `backend/.env` has no model prices yet.
 

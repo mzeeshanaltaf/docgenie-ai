@@ -24,6 +24,7 @@ from app.deps import CurrentUserId, verify_internal_key
 from app.errors import ApiError, ErrorCode
 from app.main import create_app
 from app.services.usage import Usage
+from tests.fake_llm import ScriptedResponses
 
 get_settings.cache_clear()
 
@@ -139,6 +140,7 @@ class FakeOpenAI:
         self.fail_embeddings = False
         self.embedding_calls = 0
         self.embeddings = types.SimpleNamespace(create=self._create_embeddings)
+        self.responses = ScriptedResponses()
 
     async def _create_embeddings(self, *, model: str, input: list[str]):
         self.embedding_calls += 1
@@ -163,6 +165,7 @@ def fake_openai(monkeypatch) -> FakeOpenAI:
     """Replace embeddings and OCR with offline fakes (the real e2e check is a script)."""
     fake = FakeOpenAI()
     monkeypatch.setattr("app.services.embeddings.get_client", lambda: fake)
+    monkeypatch.setattr("app.services.llm.get_client", lambda: fake)  # chat + titles
 
     async def fake_transcribe(png: bytes) -> tuple[str, Usage]:
         assert png[:8] == b"\x89PNG\r\n\x1a\n"  # a real rendered page image was produced

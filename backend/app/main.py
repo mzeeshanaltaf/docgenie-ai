@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, FastAPI
 from app.db import dispose_engine, get_engine
 from app.deps import verify_internal_key
 from app.errors import register_error_handlers
-from app.routers import credits, documents, health
+from app.routers import chat, credits, documents, feedback, health, sessions
 from app.services.ingestion import sweep_loop
 
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +47,9 @@ def create_app() -> FastAPI:
     v1.include_router(health.router)
     v1.include_router(credits.router)
     v1.include_router(documents.router)
+    v1.include_router(chat.router)
+    v1.include_router(sessions.router)
+    v1.include_router(feedback.router)
     app.include_router(v1)
     return app
 

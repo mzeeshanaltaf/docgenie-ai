@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import PRICING
+from app.config import PRICING, get_settings
 from app.models.billing import LlmUsage
 
 
@@ -53,9 +53,15 @@ def usage_from_response(resp: Any) -> Usage:
 
 
 def compute_cost(model: str, service_tier: str | None, usage: Usage) -> Decimal | None:
-    price = PRICING.get((model, service_tier or "default"))
+    tier = service_tier or "default"
+    price = PRICING.get((model, tier))
     if price is None:
-        return None
+        s = get_settings()
+        llm_models = {s.chat_model, s.title_model, s.ocr_model}
+        if model not in llm_models or s.llm_input_price_per_m is None or s.llm_output_price_per_m is None:
+            return None
+        factor = s.flex_price_multiplier if tier == "flex" else 1.0
+        price = (s.llm_input_price_per_m * factor, s.llm_output_price_per_m * factor)
     per_in, per_out = price
     # Reasoning tokens are already included in output_tokens by the API.
     cost = (usage.input_tokens * per_in + usage.output_tokens * per_out) / 1_000_000

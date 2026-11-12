@@ -2,6 +2,8 @@
 
 import io
 import secrets
+import uuid
+from typing import Any
 
 from docx import Document as DocxDocument
 from PIL import Image, ImageDraw
@@ -68,3 +70,70 @@ def txt_bytes(words: int = 1200) -> bytes:
 def multipart(file_name: str, data: bytes, content_type: str = "application/octet-stream"):
     """httpx `files=` value for the `file` field."""
     return {"file": (file_name, data, content_type)}
+
+
+def one_hot(i: int, dim: int = 1536) -> list[float]:
+    """An embedding pointing along one axis: distances between different axes are exactly 1."""
+    v = [0.0] * dim
+    v[i] = 1.0
+    return v
+
+
+async def make_document(
+    user_id: str,
+    *,
+    file_name: str = "report.pdf",
+    chunks: list[tuple[str, list[float] | None, int | None]] | None = None,
+    csv_rows: list[dict[str, str]] | None = None,
+    status: str = "ready",
+    num_pages: int | None = 3,
+) -> uuid.UUID:
+    """Insert a document straight into the database (no upload, no OpenAI).
+
+    `chunks` = [(content, embedding or None for the deterministic fake, page_start)].
+    `csv_rows` makes it a table: schema and `document_rows` are built like real ingestion does.
+    """
+    from app.db import get_sessionmaker
+    from app.models.documents import Document, DocumentChunk, DocumentRow
+    from app.services import parsing
+    from tests.conftest import _fake_vector
+
+    doc_id = uuid.uuid4()
+    schema: dict[str, Any] | None = None
+    if csv_rows:
+        headers = list(csv_rows[0])
+        data = parsing.CsvData(headers, csv_rows, ",")
+        schema = parsing.build_csv_schema(data)
+        num_pages = None
+        file_name = file_name if file_name.endswith(".csv") else "table.csv"
+    async with get_sessionmaker()() as s, s.begin():
+        s.add(
+            Document(
+                id=doc_id,
+                user_id=user_id,
+                file_name=file_name,
+                mime_type="text/csv" if schema else "application/pdf",
+                file_size=1000,
+                num_pages=num_pages,
+                storage_key=f"users/{user_id}/{doc_id}/{file_name}",
+                checksum=secrets.token_hex(16),
+                status=status,
+                csv_schema=schema,
+            )
+        )
+        await s.flush()
+        for i, (content, emb, page) in enumerate(chunks or []):
+            s.add(
+                DocumentChunk(
+                    document_id=doc_id,
+                    user_id=user_id,
+                    chunk_index=i,
+                    page_start=page,
+                    page_end=page,
+                    content=content,
+                    embedding=emb if emb is not None else _fake_vector(content),
+                )
+            )
+        for i, row in enumerate(csv_rows or [], start=1):
+            s.add(DocumentRow(document_id=doc_id, user_id=user_id, row_index=i, row_data=row))
+    return doc_id
