@@ -55,7 +55,7 @@ Implement Phase N of the DocGenie rebuild. Start by reading docs/plan/README.md 
 | 7 | [Chat UI and document viewer](phase-7-chat-ui-and-document-viewer.md) | done | 2026-11-12 | 5d1d37b |
 | 8 | [App surfaces redesign](phase-8-app-surfaces-redesign.md) | done | 2026-11-12 | f64fa10 |
 | 9 | [Landing and marketing](phase-9-landing-and-marketing.md) | done | 2026-11-12 | 0321edd |
-| 10 | [Docs and verification](phase-10-docs-and-verification.md) | done | 2026-11-12 | |
+| 10 | [Docs and verification](phase-10-docs-and-verification.md) | done | 2026-11-12 | 6dc1d94 |
 | 11 | [Deployment](phase-11-deployment.md) | not started (needs separate confirmation) | | |
 
 Statuses: `not started`, `in progress`, `partial`, `done`.
