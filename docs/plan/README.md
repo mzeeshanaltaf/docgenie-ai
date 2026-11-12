@@ -50,7 +50,7 @@ Implement Phase N of the DocGenie rebuild. Start by reading docs/plan/README.md 
 | 2 | [Documents and ingestion](phase-2-documents-and-ingestion.md) | done | 2026-11-11 | 7f06637 |
 | 3 | [Chat backend](phase-3-chat-backend.md) | done | 2026-11-12 | 3ee09c8 |
 | 4 | [Dashboard, account, contact](phase-4-dashboard-account-contact.md) | done (contact stays on n8n) | 2026-11-12 | c0fb863 |
-| 5 | [Frontend data layer](phase-5-frontend-data-layer.md) | done | 2026-11-12 | |
+| 5 | [Frontend data layer](phase-5-frontend-data-layer.md) | done | 2026-11-12 | af3a377 |
 | 6 | [Design system](phase-6-design-system.md) | not started | | |
 | 7 | [Chat UI and document viewer](phase-7-chat-ui-and-document-viewer.md) | not started | | |
 | 8 | [App surfaces redesign](phase-8-app-surfaces-redesign.md) | not started | | |

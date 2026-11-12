@@ -399,7 +399,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 ### Phase 5: Frontend data layer swap (2026-11-12)
 
 - **Status:** done
-- **Commit:** not committed (see the status table in README.md)
+- **Commit:** af3a377
 - **What was built:**
   - `src/lib/backend.ts` (client), `src/lib/sse.ts` (SSE reader), `src/types/api.ts` (response types and the SSE event union), `src/lib/constants.ts` (upload limits).
   - Routes under `src/app/api/`: `dashboard`, `documents` (+ `[id]`, `[id]/content`), `chat`, `sessions` (+ `[id]`, `[id]/messages`), `messages/[id]/feedback`, `credits/history`, `account` (DELETE), `account/export`. The old n8n routes are deleted (route map in Current state > Frontend contracts).
