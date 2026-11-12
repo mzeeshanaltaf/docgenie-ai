@@ -459,7 +459,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 ### Phase 6: Product and design system (2026-11-12)
 
 - **Status:** done
-- **Commit:** not committed
+- **Commit:** 47f60a4
 - **What was built:**
   - `PRODUCT.md`, `DESIGN.md` and `DESIGN.json` at the repo root (north star "The Reviewer's Desk"; the six DESIGN.md sections in the skill's fixed order, with grid, spacing and motion folded into Overview).
   - `src/app/globals.css` rewritten: OKLCH tokens for light and dark, mapped through `@theme inline` (surfaces, `brand` family, rules, status, charts, sidebar, type scale, radii, shadows, easing, container width), plus the `figure`, `ds-label`, `page-container`, `page-grid` and `measure` utilities and a global reduced-motion rule.
