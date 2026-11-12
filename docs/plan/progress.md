@@ -652,7 +652,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 ### Phase 9: Landing page, marketing pages and brand assets (2026-11-12)
 
 - **Status:** done
-- **Commit:** not committed (see the status table in README.md)
+- **Commit:** 0321edd
 - **What was built:**
   - Landing page split into section components (map under Current state > Landing, marketing pages and brand): hero with a replay of a real recorded turn, a scroll-driven pipeline, limits table, under the hood, free preview, FAQ, closing CTA. Pro, Enterprise and "< 5 seconds" are gone.
   - Navbar rewritten (static, `NAV_LINKS`, inline mobile menu), footer simplified, new `MarketingPage` and `LegalPage` shells.
