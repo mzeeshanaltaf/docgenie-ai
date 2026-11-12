@@ -17,7 +17,7 @@ const actionClass =
 
 /**
  * Footer of a finished answer, one line: copy / like / dislike, then the
- * metrics, which only show while the answer is hovered or focused.
+ * metrics, which only show while the answer is hovered or has keyboard focus.
  */
 export function MessageFooter() {
   const custom = useAuiState((s) => s.message.metadata.custom);
@@ -68,7 +68,9 @@ export function MessageFooter() {
         <MetricsRow
           metrics={metrics}
           variant="inline"
-          className="opacity-0 transition-opacity duration-150 group-focus-within/answer:opacity-100 group-hover/answer:opacity-100"
+          // Keyboard focus only: a mouse click (e.g. on "Thought for") also focuses,
+          // and that focus would keep the metrics up after the pointer leaves.
+          className="opacity-0 transition-opacity duration-150 group-hover/answer:opacity-100 group-has-focus-visible/answer:opacity-100"
         />
       )}
     </div>

@@ -41,7 +41,8 @@ export function MetricsRow({
         {items.map((it) => (
           <div key={it.label} className="flex gap-1 whitespace-nowrap">
             <dt>{it.label}</dt>
-            <dd className="figure">{it.value}</dd>
+            {/* Same face as the question's date: the mono `figure` reads a size larger at 12px. */}
+            <dd className="tabular-nums">{it.value}</dd>
           </div>
         ))}
       </dl>
