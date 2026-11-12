@@ -14,7 +14,6 @@ import {
   ArrowRight,
   Upload,
 } from "lucide-react";
-import type { ChatSession } from "@/types/n8n";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -27,7 +26,7 @@ function formatDate(iso: string) {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
-  const { totalDocuments, chatSessions, loading, creditBalance, messageBalance } =
+  const { dashboard, totalDocuments, loading, creditBalance, messageBalance } =
     useDashboardData();
 
   if (loading) {
@@ -67,9 +66,7 @@ export default function DashboardPage() {
   const credits = creditBalance ?? 0;
   const messages = messageBalance ?? 0;
 
-  const recentSessions: ChatSession[] = chatSessions
-    ? [...chatSessions].slice(0, 5)
-    : [];
+  const recentSessions = dashboard?.recent_sessions ?? [];
 
   const stats = [
     {
@@ -129,27 +126,22 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0">
             <ul className="divide-y divide-border">
-              {recentSessions.map((session, i) => (
+              {recentSessions.map((session) => (
                 <li
-                  key={session.session_id ?? i}
+                  key={session.id}
                   className="flex items-center justify-between px-6 py-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {session.chat_title || "Untitled Chat"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {session.messages?.length ?? 0} message{(session.messages?.length ?? 0) !== 1 ? "s" : ""}
+                        {session.title || "Untitled Chat"}
                       </p>
                     </div>
                   </div>
                   <div className="ml-4 shrink-0 text-right">
                     <p className="text-xs text-muted-foreground">
-                      {session.messages?.[0]?.created_at
-                        ? formatDate(session.messages[0].created_at)
-                        : "—"}
+                      {formatDate(session.updated_at)}
                     </p>
                   </div>
                 </li>

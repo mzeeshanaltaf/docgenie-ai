@@ -37,7 +37,7 @@ const values = [
     icon: Shield,
     title: "Privacy by design",
     description:
-      "Your documents are processed securely. We never sell or share your data with third parties.",
+      "Your documents are processed securely. We never sell your data; it is shared only with the AI provider (OpenAI) that answers your questions.",
   },
   {
     icon: FileText,

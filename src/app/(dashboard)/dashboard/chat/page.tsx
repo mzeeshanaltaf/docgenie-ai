@@ -1,303 +1,264 @@
 "use client";
 
+// TEMPORARY chat UI (Phase 5): the old screen re-pointed at the new backend so
+// the app keeps working end to end. Phase 7 replaces it with the assistant-ui
+// chat (reasoning, tool steps, click-through citations, document selection).
+// What is deliberately minimal here: only `text.delta` is rendered, citations
+// are appended as a plain "Sources" list, and `reasoning.*` / `tool.*` events
+// are ignored.
+
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useDashboardData } from "@/contexts/dashboard-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatSidebar } from "@/components/dashboard/chat/chat-sidebar";
 import { ChatMessages } from "@/components/dashboard/chat/chat-messages";
 import { ChatInput } from "@/components/dashboard/chat/chat-input";
+import { readChatStream } from "@/lib/sse";
 import { toast } from "sonner";
-import type { ChatSession } from "@/types/n8n";
+import type {
+  ApiErrorBody,
+  Citation,
+  MessageListOut,
+  MessageOut,
+  SessionListOut,
+  SessionOut,
+} from "@/types/api";
 
 interface LocalMessage {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
-  id?: number;
+  id?: string;
   reaction?: "like" | "dislike" | null;
 }
 
-function stripOuterQuotes(text: string): string {
-  const t = text.trim();
-  return t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1).trim() : t;
+/** Plain-text list of the sources an answer cites (temporary; see file header). */
+function withSources(content: string, citations: Citation[]): string {
+  if (citations.length === 0) return content;
+  const lines = citations.map((c) => {
+    const pages =
+      c.page_start == null
+        ? ""
+        : c.page_end && c.page_end !== c.page_start
+          ? `, pp. ${c.page_start}–${c.page_end}`
+          : `, p. ${c.page_start}`;
+    return `- [${c.index}] ${c.file_name}${pages}`;
+  });
+  return `${content}\n\n**Sources**\n\n${lines.join("\n")}`;
+}
+
+function toLocalMessages(messages: MessageOut[]): LocalMessage[] {
+  const out: LocalMessage[] = [];
+  for (const m of messages) {
+    // A failed turn stored no answer; there is nothing to show for it.
+    if (m.role === "assistant" && !m.content) continue;
+    const citations = (m.parts ?? []).filter(
+      (p): p is Extract<typeof p, { type: "citation" }> => p.type === "citation"
+    );
+    out.push({
+      role: m.role,
+      content:
+        m.role === "assistant" ? withSources(m.content, citations) : m.content,
+      timestamp: new Date(m.created_at),
+      id: m.role === "assistant" ? m.id : undefined,
+      reaction: m.feedback?.rating ?? null,
+    });
+  }
+  return out;
 }
 
 export default function ChatPage() {
-  const { chatSessions, loading, refreshAll } = useDashboardData();
+  const { refreshAll } = useDashboardData();
+  const [sessions, setSessions] = useState<SessionOut[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string | undefined>(
     undefined
   );
-  const [streamingStartTime, setStreamingStartTime] = useState<Date | undefined>(undefined);
-  const [sessionTitles, setSessionTitles] = useState<Record<string, string>>(
-    {}
+  const [streamingStartTime, setStreamingStartTime] = useState<Date | undefined>(
+    undefined
   );
   const abortRef = useRef<AbortController | null>(null);
-  // Tracks the next expected message ID for the active session.
-  // null = unknown (will fetch on next AI response). Set after first response.
-  const nextMsgIdRef = useRef<number | null>(null);
+  // Ignores a slow history response if the user has already switched chats.
+  const loadSeq = useRef(0);
 
-  // Load messages when switching to an existing session.
-  // If the session isn't in chatSessions yet (new in-progress session),
-  // leave localMessages untouched so optimistic messages aren't wiped.
+  // Chat list (titles only; messages are loaded when a chat is opened).
   useEffect(() => {
-    if (!activeSessionId || !chatSessions) {
-      setLocalMessages([]);
-      return;
-    }
+    const controller = new AbortController();
+    fetch("/api/sessions", { signal: controller.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<SessionListOut>) : null))
+      .then((data) => data && setSessions(data.sessions))
+      .catch(() => {})
+      .finally(() => {
+        if (!controller.signal.aborted) setSessionsLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
 
-    const session = chatSessions.find(
-      (s) => s.session_id === activeSessionId
-    );
-    if (session?.messages) {
-      const msgs: LocalMessage[] = [];
-      for (const m of session.messages) {
-        const ts = m.created_at ? new Date(m.created_at) : undefined;
-        const id = m.id != null ? Number(m.id) : undefined;
-        msgs.push({ role: "user", content: m.user_message, timestamp: ts });
-        msgs.push({ role: "assistant", content: m.ai_response, timestamp: ts, id, reaction: m.reaction });
-      }
-      setLocalMessages(msgs);
-      // Update ID tracker so subsequent new messages get correct IDs
-      const lastId = msgs.findLast((m) => m.role === "assistant" && m.id != null)?.id;
-      if (lastId != null) nextMsgIdRef.current = (lastId as number) + 1;
-    }
-    // Session not found = new in-progress session; leave messages as-is
-  }, [activeSessionId, chatSessions]);
+  // Closing the page cancels a run in flight (the backend keeps the partial answer).
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const handleNewChat = useCallback(() => {
-    const newId = crypto.randomUUID();
-    setActiveSessionId(newId);
+    abortRef.current?.abort();
+    loadSeq.current++;
+    setIsLoading(false);
+    setStreamingContent(undefined);
+    setActiveSessionId(crypto.randomUUID());
     setLocalMessages([]);
-    nextMsgIdRef.current = null;
   }, []);
 
-  const handleSelectSession = useCallback((sessionId: string) => {
+  const handleSelectSession = useCallback(async (sessionId: string) => {
+    abortRef.current?.abort();
+    const seq = ++loadSeq.current;
+    setIsLoading(false);
+    setStreamingContent(undefined);
     setActiveSessionId(sessionId);
-    nextMsgIdRef.current = null;
+    setLocalMessages([]);
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/messages`);
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as MessageListOut;
+      if (seq === loadSeq.current) setLocalMessages(toLocalMessages(data.messages));
+    } catch {
+      if (seq === loadSeq.current) toast.error("Failed to load this chat");
+    }
   }, []);
 
-  const handleSend = useCallback(
-    async (message: string) => {
-      if (!activeSessionId) {
-        // Auto-create a new session if none active
-        const newId = crypto.randomUUID();
-        setActiveSessionId(newId);
-        // Continue with this new ID
-        sendMessage(message, newId, true);
-        return;
-      }
-
-      const isFirstMessage = localMessages.length === 0;
-      sendMessage(message, activeSessionId, isFirstMessage);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeSessionId, localMessages]
-  );
-
-  const sendMessage = async (
-    message: string,
-    sessionId: string,
-    isFirstMessage: boolean
-  ) => {
-    const userTimestamp = new Date();
-    // Optimistic update — add user message
+  const sendMessage = async (message: string, sessionId: string) => {
     setLocalMessages((prev) => [
       ...prev,
-      { role: "user", content: message, timestamp: userTimestamp },
+      { role: "user", content: message, timestamp: new Date() },
     ]);
     setIsLoading(true);
     setStreamingContent(undefined);
     setStreamingStartTime(undefined);
 
-    // Abort any previous in-flight request
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const res = await fetch("/api/chat/message", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: message, session_id: sessionId }),
+        body: JSON.stringify({ session_id: sessionId, message }),
         signal: controller.signal,
       });
 
       if (!res.ok) {
-        let errorMessage = "Failed to get response";
-        try {
-          const errData = await res.json();
-          errorMessage = errData.message || errData.error || errorMessage;
-        } catch {
-          // body might not be JSON
-        }
-        toast.error(errorMessage);
+        // Nothing was stored or charged (402 no credits, 404, 422, 502...).
+        const err = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null;
+        toast.error(err?.message || "Failed to get response");
         setLocalMessages((prev) => prev.slice(0, -1));
-        setStreamingContent(undefined);
-        setStreamingStartTime(undefined);
+        await refreshAll();
         return;
       }
 
-      // Read the streaming response (n8n sends newline-delimited JSON objects)
-      const reader = res.body?.getReader();
-      if (!reader) {
-        const text = await res.text();
+      let assistantId: string | undefined;
+      let text = "";
+      const citations: Citation[] = [];
+      let errorMessage: string | undefined;
+      let status: "complete" | "incomplete" | "error" | undefined;
+      let finished = false;
+
+      // Commit the answer once the run is over. The stream stays open a moment
+      // longer for `session.title`, which must not keep the input disabled.
+      const finish = () => {
+        if (finished) return;
+        finished = true;
         setStreamingContent(undefined);
         setStreamingStartTime(undefined);
-        setLocalMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: text || "No response", timestamp: new Date() },
-        ]);
-      } else {
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let streamedText = "";
-        let finalOutput = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Process complete JSON objects separated by newlines
-          const lines = buffer.split("\n");
-          // Keep the last (potentially incomplete) line in the buffer
-          buffer = lines.pop() ?? "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            try {
-              const event = JSON.parse(trimmed);
-              if (event.type === "item" && event.content) {
-                if (event.metadata?.nodeName === "Respond to Webhook") {
-                  // Final response JSON — extract the output field
-                  try {
-                    const parsed = JSON.parse(event.content);
-                    if (parsed.output) finalOutput = parsed.output;
-                  } catch {
-                    // Not JSON, ignore
-                  }
-                } else {
-                  // AI token chunk — set start time on first token
-                  if (!streamedText) setStreamingStartTime(new Date());
-                  streamedText += event.content;
-                  setStreamingContent(streamedText);
-                }
-              }
-            } catch {
-              // Incomplete or invalid JSON, skip
-            }
-          }
-        }
-
-        // Process any remaining buffer
-        if (buffer.trim()) {
-          try {
-            const event = JSON.parse(buffer.trim());
-            if (event.type === "item" && event.content) {
-              if (event.metadata?.nodeName === "Respond to Webhook") {
-                try {
-                  const parsed = JSON.parse(event.content);
-                  if (parsed.output) finalOutput = parsed.output;
-                } catch {
-                  // Not JSON
-                }
-              } else {
-                streamedText += event.content;
-              }
-            }
-          } catch {
-            // Incomplete JSON
-          }
-        }
-
-        // Use the final webhook output if available, otherwise the streamed text
-        // Strip outer quotes that n8n sometimes wraps the response in
-        const raw = finalOutput || streamedText || "No response";
-        const content = stripOuterQuotes(raw);
-        setStreamingContent(undefined);
-        setStreamingStartTime(undefined);
-
-        if (nextMsgIdRef.current !== null) {
-          // We know the next ID — assign it directly
-          const id = nextMsgIdRef.current;
-          nextMsgIdRef.current = id + 1;
+        setIsLoading(false);
+        if (text) {
           setLocalMessages((prev) => [
             ...prev,
-            { role: "assistant", content, timestamp: new Date(), id },
+            {
+              role: "assistant",
+              content: withSources(text, citations),
+              timestamp: new Date(),
+              id: assistantId,
+            },
           ]);
-        } else {
-          // Unknown ID — commit without it, then fetch session history to get it
-          setLocalMessages((prev) => [
-            ...prev,
-            { role: "assistant", content, timestamp: new Date() },
-          ]);
-          fetch(`/api/chat/session-history?session_id=${sessionId}`)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((history: Array<{ id: string | number }> | null) => {
-              if (!history?.length) return;
-              const lastId = Number(history[history.length - 1].id);
-              if (!isNaN(lastId)) {
-                nextMsgIdRef.current = lastId + 1;
-                // Patch the last assistant message with its real ID
-                setLocalMessages((prev) => {
-                  const updated = [...prev];
-                  for (let i = updated.length - 1; i >= 0; i--) {
-                    if (updated[i].role === "assistant" && updated[i].id == null) {
-                      updated[i] = { ...updated[i], id: lastId };
-                      break;
-                    }
-                  }
-                  return updated;
-                });
-              }
-            })
-            .catch(() => {/* non-critical */});
+        }
+        if (status === "error" || !text) {
+          toast.error(errorMessage || "No answer was produced. Please try again.");
+        } else if (status === "incomplete") {
+          toast.warning("The answer was cut short.");
+        }
+        void refreshAll();
+      };
+
+      for await (const ev of readChatStream(res)) {
+        switch (ev.event) {
+          case "message.start":
+            assistantId = ev.data.message_id;
+            setSessions((prev) =>
+              prev.some((s) => s.id === sessionId)
+                ? prev
+                : [
+                    {
+                      id: sessionId,
+                      title: null,
+                      document_ids: null,
+                      created_at: ev.data.created_at,
+                      updated_at: ev.data.created_at,
+                    },
+                    ...prev,
+                  ]
+            );
+            break;
+          case "text.delta":
+            if (!text) setStreamingStartTime(new Date());
+            text += ev.data.text;
+            setStreamingContent(text);
+            break;
+          case "citation":
+            citations.push(ev.data);
+            break;
+          case "error":
+            errorMessage = ev.data.message;
+            break;
+          case "message.end":
+            status = ev.data.status;
+            finish();
+            break;
+          case "session.title":
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === ev.data.session_id ? { ...s, title: ev.data.title } : s
+              )
+            );
+            break;
+          // reasoning.delta, tool.start, tool.end: rendered by the Phase 7 chat.
         }
       }
-
-      // Fire-and-forget: generate title for first message
-      if (isFirstMessage) {
-        fetch("/api/chat/title", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: message, session_id: sessionId }),
-        })
-          .then((r) => r.json())
-          .then((titleData) => {
-            const title = Array.isArray(titleData)
-              ? titleData[0]?.output?.title
-              : titleData?.output?.title;
-            if (title) {
-              setSessionTitles((prev) => ({
-                ...prev,
-                [sessionId]: title,
-              }));
-            }
-            refreshAll();
-          })
-          .catch(() => {
-            // Title generation is non-critical
-          });
-      }
-
-      refreshAll();
+      finish(); // the stream ended without message.end (connection dropped)
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       toast.error("Failed to send message");
-      setLocalMessages((prev) => prev.slice(0, -1));
       setStreamingContent(undefined);
       setStreamingStartTime(undefined);
-    } finally {
       setIsLoading(false);
+      void refreshAll();
     }
   };
 
-  if (loading) {
+  const handleSend = useCallback(
+    (message: string) => {
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        setActiveSessionId(sessionId);
+      }
+      void sendMessage(message, sessionId);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeSessionId]
+  );
+
+  if (sessionsLoading) {
     return (
       <div className="flex h-[calc(100vh-8rem)] gap-0 rounded-lg border border-border overflow-hidden">
         <div className="w-64 shrink-0 border-r border-border p-3 space-y-2">
@@ -314,33 +275,12 @@ export default function ChatPage() {
     );
   }
 
-  // Merge server sessions with local title overrides
-  const displaySessions: ChatSession[] = [
-    // If current session is new (not in server data), add it at top
-    ...(activeSessionId &&
-    !chatSessions?.find((s) => s.session_id === activeSessionId) &&
-    localMessages.length > 0
-      ? [
-          {
-            session_id: activeSessionId,
-            chat_title:
-              sessionTitles[activeSessionId] || "New Chat",
-            messages: [],
-          },
-        ]
-      : []),
-    ...(chatSessions ?? []).map((s) => ({
-      ...s,
-      chat_title: sessionTitles[s.session_id] || s.chat_title,
-    })),
-  ];
-
   return (
     <div className="flex h-[calc(100vh-8rem)] rounded-lg border border-border overflow-hidden">
       {/* Sidebar */}
       <div className="hidden w-64 shrink-0 md:block">
         <ChatSidebar
-          sessions={displaySessions}
+          sessions={sessions}
           activeSessionId={activeSessionId}
           onSelectSession={handleSelectSession}
           onNewChat={handleNewChat}
@@ -354,7 +294,6 @@ export default function ChatPage() {
           isLoading={isLoading}
           streamingContent={streamingContent}
           streamingStartTime={streamingStartTime}
-          sessionId={activeSessionId ?? undefined}
         />
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </div>

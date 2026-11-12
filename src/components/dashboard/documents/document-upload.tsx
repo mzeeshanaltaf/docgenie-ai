@@ -6,6 +6,8 @@ import { Upload, FileText, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDashboardData } from "@/contexts/dashboard-data";
 import { cn } from "@/lib/utils";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, MAX_UPLOAD_PAGES } from "@/lib/constants";
+import type { ApiErrorBody, DocumentOut } from "@/types/api";
 
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".csv"];
 const ALLOWED_TYPES = [
@@ -14,7 +16,6 @@ const ALLOWED_TYPES = [
   "text/plain",
   "text/csv",
 ];
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -36,8 +37,8 @@ export function DocumentUpload() {
         return "Unsupported file type. Allowed: PDF, DOCX, TXT, CSV";
       }
     }
-    if (file.size > MAX_SIZE) {
-      return "File size exceeds 5MB limit";
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return `File size exceeds ${MAX_UPLOAD_MB}MB limit`;
     }
     return null;
   }, []);
@@ -72,21 +73,23 @@ export function DocumentUpload() {
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const res = await fetch("/api/documents/upload", {
+      const res = await fetch("/api/documents", {
         method: "POST",
         body: formData,
       });
 
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        const message =
-          data.message || data.error || "Upload failed";
-        toast.error(message);
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as Partial<ApiErrorBody> | null;
+        toast.error(err?.message || "Upload failed");
+        // A rejected upload may still have changed credits (e.g. a refund).
+        await refreshAll();
         return;
       }
 
-      toast.success("Document uploaded successfully");
+      // 202: the document is stored and now "processing"; the dashboard
+      // context polls it until it is ready or failed.
+      const doc = (await res.json()) as DocumentOut;
+      toast.success(`Uploaded "${doc.file_name}". Processing…`);
       setSelectedFile(null);
       await refreshAll();
     } catch {
@@ -119,7 +122,7 @@ export function DocumentUpload() {
           Drop your document here or click to browse
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          PDF, DOCX, TXT, CSV · Max 5MB · Max 20 pages
+          PDF, DOCX, TXT, CSV · Max {MAX_UPLOAD_MB}MB · Max {MAX_UPLOAD_PAGES} pages
         </p>
         <input
           ref={inputRef}

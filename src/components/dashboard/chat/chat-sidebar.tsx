@@ -4,21 +4,17 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ChatSession } from "@/types/n8n";
+import type { SessionOut } from "@/types/api";
 
 interface ChatSidebarProps {
-  sessions: ChatSession[];
+  sessions: SessionOut[];
   activeSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
 }
 
-function getSessionDate(session: ChatSession): Date {
-  if (session.messages && session.messages.length > 0) {
-    const last = session.messages[session.messages.length - 1];
-    if (last.created_at) return new Date(last.created_at);
-  }
-  return new Date();
+function getSessionDate(session: SessionOut): Date {
+  return new Date(session.updated_at);
 }
 
 function getDateGroup(date: Date): string {
@@ -39,8 +35,8 @@ function getDateGroup(date: Date): string {
 
 const GROUP_ORDER = ["Today", "Yesterday", "Last 7 days", "Older"];
 
-function groupSessions(sessions: ChatSession[]): { label: string; sessions: ChatSession[] }[] {
-  const map: Record<string, ChatSession[]> = {};
+function groupSessions(sessions: SessionOut[]): { label: string; sessions: SessionOut[] }[] {
+  const map: Record<string, SessionOut[]> = {};
 
   for (const session of sessions) {
     const group = getDateGroup(getSessionDate(session));
@@ -89,18 +85,18 @@ export function ChatSidebar({
                 <div className="space-y-1 px-3">
                   {group.sessions.map((session) => (
                     <button
-                      key={session.session_id}
-                      onClick={() => onSelectSession(session.session_id)}
+                      key={session.id}
+                      onClick={() => onSelectSession(session.id)}
                       className={cn(
                         "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                        activeSessionId === session.session_id
+                        activeSessionId === session.id
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
                       <MessageSquare className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">
-                        {session.chat_title || "New Chat"}
+                        {session.title || "New Chat"}
                       </span>
                     </button>
                   ))}

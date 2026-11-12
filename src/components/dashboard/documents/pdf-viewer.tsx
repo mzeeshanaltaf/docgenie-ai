@@ -17,10 +17,11 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3.0;
 
 interface PdfViewerProps {
-  base64: string;
+  /** The PDF bytes, fetched from /api/documents/{id}/content. */
+  file: Blob;
 }
 
-export function PdfViewer({ base64 }: PdfViewerProps) {
+export function PdfViewer({ file }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,6 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
     return () => observer.disconnect();
   }, []);
 
-  const pdfData = `data:application/pdf;base64,${base64}`;
   const pageWidth = containerWidth > 0 ? Math.round(containerWidth * zoom) : 0;
 
   return (
@@ -124,7 +124,7 @@ export function PdfViewer({ base64 }: PdfViewerProps) {
           </div>
         )}
         <Document
-          file={pdfData}
+          file={file}
           onLoadSuccess={({ numPages }) => {
             setNumPages(numPages);
             setLoading(false);

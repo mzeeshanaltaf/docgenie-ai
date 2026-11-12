@@ -184,7 +184,7 @@ const faqs = [
   },
   {
     q: "Is my data private and secure?",
-    a: "Yes. Your documents are processed securely over HTTPS and never shared with third parties. You can delete your documents at any time from the dashboard.",
+    a: "Yes. Your documents are processed securely over HTTPS and shared only with our AI provider (OpenAI) to answer your questions. You can delete your documents at any time from the dashboard.",
   },
   {
     q: "How does the credit system work?",

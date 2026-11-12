@@ -4,8 +4,8 @@ import { OTP_SENDER_EMAIL } from "./constants";
 /**
  * Transactional email via Resend.
  *
- * This is the one part of the backend that does NOT go through n8n — Better
- * Auth needs a synchronous sender for its OTP flows. Server-only: the Resend
+ * Sent from Next.js itself, not the FastAPI backend: Better Auth needs a
+ * synchronous sender for its OTP flows. Server-only: the Resend
  * API has no CORS support, so this module must never reach a client component.
  */
 

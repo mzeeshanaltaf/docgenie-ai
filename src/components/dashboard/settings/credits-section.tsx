@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Zap, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/contexts/dashboard-data";
+import type { CreditHistoryOut, CreditTransaction } from "@/types/api";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -14,8 +16,19 @@ function formatDate(iso: string) {
 }
 
 export function CreditsSection() {
-  const { creditBalance, messageBalance, creditHistory, loading } =
-    useDashboardData();
+  const { creditBalance, messageBalance, loading } = useDashboardData();
+
+  // The ledger is fetched here, not held in the dashboard context: it is only
+  // needed on this tab. Re-fetched when the balances change (a new ledger row).
+  const [creditHistory, setCreditHistory] = useState<CreditTransaction[] | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/credits/history", { signal: controller.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<CreditHistoryOut>) : null))
+      .then((data) => data && setCreditHistory(data.transactions))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [creditBalance, messageBalance]);
 
   if (loading) {
     return (

@@ -12,3 +12,12 @@
  * different address, update this too.
  */
 export const OTP_SENDER_EMAIL = "noreply@verification.zeeshanai.cloud";
+
+/**
+ * Upload limits shown in the UI and used for a cheap early check. The backend
+ * is the authority (MAX_UPLOAD_MB / MAX_PAGES in backend/.env); keep these in
+ * step with its defaults.
+ */
+export const MAX_UPLOAD_MB = 20;
+export const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+export const MAX_UPLOAD_PAGES = 50;

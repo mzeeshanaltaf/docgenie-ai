@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
+// Next 16 renamed middleware.ts to proxy.ts (and the export to `proxy`).
 // Optimistic gate: redirect unauthenticated visitors away from /dashboard.
-// This only checks for the presence of the session cookie (fast, edge-safe).
+// This only checks for the presence of the session cookie (fast).
 // Full session validation happens in the API routes / server components,
-// which run on the Node runtime where the Postgres pool is available.
-export function middleware(req: NextRequest) {
+// where the Postgres pool is available.
+export function proxy(req: NextRequest) {
   const sessionCookie = getSessionCookie(req);
   if (!sessionCookie) {
     const signInUrl = new URL("/sign-in", req.url);

@@ -6,159 +6,149 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   useRef,
   type ReactNode,
 } from "react";
 import type {
-  DocumentRecord,
-  ChatSession,
-  CreditTransaction,
-  UserDashboardData,
-} from "@/types/n8n";
+  DashboardOut,
+  DocumentListOut,
+  DocumentOut,
+} from "@/types/api";
+
+/** How often documents that are still `processing` are re-checked. */
+const POLL_INTERVAL_MS = 2000;
 
 interface DashboardDataContextType {
-  totalDocuments: number;
-  documents: DocumentRecord[] | null;
-  chatSessions: ChatSession[] | null;
+  /** Summary from GET /api/dashboard (balances, counts, recent items, usage); null until loaded. */
+  dashboard: DashboardOut | null;
+  /** All of the user's documents, newest first; null until loaded. No file bytes. */
+  documents: DocumentOut[] | null;
+  /** Convenience copies of dashboard.balances / counts (null until loaded). */
   creditBalance: number | null;
   messageBalance: number | null;
-  creditHistory: CreditTransaction[] | null;
+  totalDocuments: number;
+  /** True only until the first load finishes. */
   loading: boolean;
+  /**
+   * Re-fetch the dashboard summary and the documents list. Call after ANY
+   * action that changes credits or data (upload, delete, chat message).
+   */
   refreshAll: () => Promise<void>;
-  previewDocuments: DocumentRecord[] | null;
-  loadPreviewDocuments: () => Promise<DocumentRecord[]>;
 }
 
 const DashboardDataContext = createContext<DashboardDataContextType | null>(
   null
 );
 
-/** Apply a unified API response to all state setters. */
-function applyDashboardData(
-  data: UserDashboardData,
-  setters: {
-    setDocuments: (v: DocumentRecord[]) => void;
-    setChatSessions: (v: ChatSession[]) => void;
-    setCreditBalance: (v: number) => void;
-    setMessageBalance: (v: number) => void;
-    setCreditHistory: (v: CreditTransaction[]) => void;
-    setTotalDocuments: (v: number) => void;
-  }
-) {
-  setters.setDocuments(data.documents);
-  setters.setChatSessions(data.chat_sessions);
-  setters.setCreditBalance(data.account_summary.credit_balance);
-  setters.setMessageBalance(data.account_summary.message_balance);
-  setters.setTotalDocuments(data.account_summary.user_documents);
-  setters.setCreditHistory(data.credit_transactions);
+async function getJson<T>(url: string, signal?: AbortSignal): Promise<T | null> {
+  const res = await fetch(url, { signal });
+  return res.ok ? ((await res.json()) as T) : null;
 }
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
-  const [totalDocuments, setTotalDocuments] = useState(0);
-  const [documents, setDocuments] = useState<DocumentRecord[] | null>(null);
-  const [chatSessions, setChatSessions] = useState<ChatSession[] | null>(null);
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
-  const [messageBalance, setMessageBalance] = useState<number | null>(null);
-  const [creditHistory, setCreditHistory] = useState<
-    CreditTransaction[] | null
-  >(null);
+  const [dashboard, setDashboard] = useState<DashboardOut | null>(null);
+  const [documents, setDocuments] = useState<DocumentOut[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [previewDocuments, setPreviewDocuments] = useState<DocumentRecord[] | null>(null);
-  // Track document IDs to detect real document list changes (not chat/credit updates)
-  const docIdsRef = useRef<string>("");
+  // Only the newest request may write state, so a slow older response can't
+  // overwrite a fresher one.
+  const requestSeq = useRef(0);
 
-  const setters = {
-    setDocuments,
-    setChatSessions,
-    setCreditBalance,
-    setMessageBalance,
-    setCreditHistory,
-    setTotalDocuments,
-  };
-
-  // Single fetch on mount — fetch dashboard data and preview documents in parallel
-  useEffect(() => {
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    async function load() {
-      try {
-        const [userDataRes, previewRes] = await Promise.all([
-          fetch("/api/user-data", { signal }),
-          fetch("/api/documents/preview", { signal }),
-        ]);
-        if (signal.aborted) return;
-
-        if (userDataRes.ok) {
-          const data: UserDashboardData = await userDataRes.json();
-          docIdsRef.current = data.documents.map((d) => d.file_id).sort().join(",");
-          applyDashboardData(data, setters);
-        }
-        if (previewRes.ok) {
-          const preview: DocumentRecord[] = await previewRes.json();
-          setPreviewDocuments(preview);
-        }
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-      } finally {
-        if (!signal.aborted) setLoading(false);
-      }
-    }
-
-    load();
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Single refresh function — one webhook call updates everything
   const refreshAll = useCallback(async () => {
+    const seq = ++requestSeq.current;
     try {
-      const res = await fetch("/api/user-data");
-      if (res.ok) {
-        const data: UserDashboardData = await res.json();
-        const newDocIds = data.documents.map((d) => d.file_id).sort().join(",");
-        const docsChanged = newDocIds !== docIdsRef.current;
-        if (docsChanged) {
-          docIdsRef.current = newDocIds;
-          // Re-fetch preview documents in the background so cache stays warm
-          fetch("/api/documents/preview")
-            .then((r) => (r.ok ? r.json() : null))
-            .then((preview) => { if (preview) setPreviewDocuments(preview); })
-            .catch(() => setPreviewDocuments(null));
-        }
-        applyDashboardData(data, setters);
-      }
+      const [dash, docs] = await Promise.all([
+        getJson<DashboardOut>("/api/dashboard"),
+        getJson<DocumentListOut>("/api/documents"),
+      ]);
+      if (seq !== requestSeq.current) return;
+      if (dash) setDashboard(dash);
+      if (docs) setDocuments(docs.documents);
     } catch {
-      // fail silently
+      // Network blip: keep what we have; the next refresh will catch up.
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lazy-load preview documents (with base64). Returns cached data if available.
-  const loadPreviewDocuments = useCallback(async (): Promise<DocumentRecord[]> => {
-    if (previewDocuments !== null) return previewDocuments;
-    const res = await fetch("/api/documents/preview");
-    if (!res.ok) throw new Error("Failed to load preview documents");
-    const data: DocumentRecord[] = await res.json();
-    setPreviewDocuments(data);
-    return data;
-  }, [previewDocuments]);
+  // Initial load.
+  useEffect(() => {
+    let cancelled = false;
+    refreshAll().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshAll]);
+
+  // Poll GET /api/documents/{id} while any document is still processing.
+  // The key changes only when the SET of processing ids changes, so ordinary
+  // list refreshes don't restart the timer.
+  const processingKey = useMemo(
+    () =>
+      (documents ?? [])
+        .filter((d) => d.status === "processing")
+        .map((d) => d.id)
+        .sort()
+        .join(","),
+    [documents]
+  );
+
+  useEffect(() => {
+    if (!processingKey) return;
+    const ids = processingKey.split(",");
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function tick() {
+      if (cancelled) return;
+      if (!document.hidden) {
+        const fresh = await Promise.all(
+          ids.map(async (id): Promise<DocumentOut | "gone" | null> => {
+            try {
+              const res = await fetch(`/api/documents/${id}`);
+              if (res.status === 404) return "gone";
+              return res.ok ? ((await res.json()) as DocumentOut) : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        if (cancelled) return;
+
+        const settled = fresh.some(
+          (d) => d === "gone" || (d !== null && d.status !== "processing")
+        );
+        if (settled) {
+          // A document finished (or failed, which refunds its credit): the
+          // balances and counts changed too, so reload everything.
+          await refreshAll();
+        }
+      }
+      if (!cancelled) timer = setTimeout(tick, POLL_INTERVAL_MS);
+    }
+
+    timer = setTimeout(tick, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [processingKey, refreshAll]);
+
+  const value = useMemo<DashboardDataContextType>(
+    () => ({
+      dashboard,
+      documents,
+      creditBalance: dashboard?.balances.documents ?? null,
+      messageBalance: dashboard?.balances.messages ?? null,
+      totalDocuments: dashboard?.counts.documents ?? 0,
+      loading,
+      refreshAll,
+    }),
+    [dashboard, documents, loading, refreshAll]
+  );
 
   return (
-    <DashboardDataContext.Provider
-      value={{
-        totalDocuments,
-        documents,
-        chatSessions,
-        creditBalance,
-        messageBalance,
-        creditHistory,
-        loading,
-        refreshAll,
-        previewDocuments,
-        loadPreviewDocuments,
-      }}
-    >
+    <DashboardDataContext.Provider value={value}>
       {children}
     </DashboardDataContext.Provider>
   );

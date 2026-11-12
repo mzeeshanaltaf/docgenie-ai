@@ -199,7 +199,7 @@ Another user's session, message or document is always `404 NOT_FOUND`, never `40
 - **Phase 5 – upload limits** are `MAX_UPLOAD_MB = 20` / `MAX_UPLOAD_PAGES = 50` in `src/lib/constants.ts` (UI text and an early size check); the backend is the authority.
 
 ### Known issues and deferred work
-- **Privacy page is now wrong:** `src/app/(marketing)/privacy/page.tsx` (line 50) says AI processing runs on n8n and that no document data goes to external AI providers. Documents and questions now go to OpenAI. It needs a truthful rewrite (Phase 9, or the user; it is legal copy, so it was not auto-edited).
+- **Legal copy fixed after Phase 5 (2026-11-12):** the privacy page now describes OpenAI processing (questions, passages, embeddings, titles, scanned-page images; sent with storage disabled), Resend, Upstash and the self-hosted n8n contact workflow, stored data and deletion, with one consistent "last updated" date; the landing FAQ and About line that said data is "never shared with third parties" were corrected. The terms needed no change. Phase 9 should keep these claims true when it rewrites the marketing pages.
 - **Root `README.md` still documents the n8n architecture and env vars** (Phase 10 rewrites docs); `CLAUDE.md`'s n8n sections are stale until then too.
 - **Coolify still holds the removed `N8N_*` vars** and has no `BACKEND_API_URL` / `INTERNAL_API_KEY` (Phase 11).
 - **Flex tier** is opt-in (`CHAT_SERVICE_TIER=flex`); the fallback retry on `FLEX_FALLBACK_TIER` is implemented (Phase 3). Measured live (Phase 3, 27 flex calls with a trivial one-word prompt): 6 to 15 s per call (default tier: about 1 to 2 s per model call), and "Flex processing is temporarily unavailable" showed up once (4 of 5 in the Phase 1 probe, so the rate varies a lot). It arrives either as an HTTP 429 at request time or, as seen in that one case, as an `APIError` from inside the open stream about 1.7 s in; the retry handles both when no content has been streamed yet. The in-stream shape was only reproduced with a fake in tests (the live fix was not re-observed because the unavailability did not recur in the 21 calls after it). Not recommended as the default for an interactive chat.
@@ -411,7 +411,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
   - Env: `.env.local` and `.env.example` updated (names in Current state > Env vars).
 - **Exit criteria:**
   - PASS: `npx tsc --noEmit` is clean; `npm run build` succeeds and lists `Proxy (Middleware)`.
-  - PASS (as agreed in Phase 4): `grep -ri n8n src/` matches only `lib/n8n.ts`, `api/contact/route.ts` and the privacy page copy (flagged in Known issues).
+  - PASS (as agreed in Phase 4): `grep -ri n8n src/` matches only `lib/n8n.ts`, `api/contact/route.ts` and the (corrected) privacy page copy.
   - PASS: end to end against MinIO + uvicorn + `next dev` with a throwaway Better Auth user. Sign-up reached the backend through the hook (5 documents / 25 messages). Upload via the proxy returned 202 `processing` and polled to `ready`; the content bytes were identical to the upload. Chat streamed through `/api/chat` incrementally (first event at 4 s, tool step, tokens, citation, `message.end`, `session.title`) with the right headers; a client disconnect mid-answer was stored by the backend as `incomplete`. Sessions list/rename/delete, feedback like/delete, credit history and the export zip (all sections plus the original) worked; every route returned 401 without a session; document delete worked. Account deletion: a wrong password changed nothing; the right password left backend rows 0, the MinIO prefix gone, the `user` row gone, cookies cleared and the old cookie at 401.
   - PASS: a scripted real-Chrome run (Playwright on the system Chrome) drove the UI: upload with the "Processing…" badge, PDF preview canvas, streamed chat with Sources, a like that persisted across reload, the credit history tab, delete via the UI; no console or page errors.
   - PASS: `/dashboard` redirects (307) to sign-in without a session cookie, via `proxy.ts`.
@@ -429,7 +429,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 - **Open issues / follow-ups:**
   - Phase 7: build the assistant-ui adapter on `readChatStream`; confirm copy/like/dislike with the user; send `document_ids` from the selection UI; render reasoning and tool events.
   - Phase 8: Settings export + delete UI (Google-only users have no password and need a fresh session, so offer re-sign-in on `SESSION_EXPIRED`); map ingestion error codes; use `dashboard.usage` and `recent_*`.
-  - Phase 9 or the user: the privacy page's n8n and "no external AI providers" claims are now false.
+  - Phase 9: keep the privacy / FAQ / About claims about OpenAI and third parties true when rewriting (already corrected in Phase 5).
   - Phase 10: `README.md` and `CLAUDE.md` still describe n8n.
   - Phase 11: set `BACKEND_API_URL` and `INTERNAL_API_KEY` in Coolify (runtime), remove the nine dead `N8N_*` vars. The no-JS contact redirect builds its URL from the request, which showed `0.0.0.0` only because dev runs with `--hostname 0.0.0.0`; check it behind Coolify's proxy.
   - Phase 4's backend work (including the `0003` migration) is still uncommitted in the working tree alongside this phase's changes.

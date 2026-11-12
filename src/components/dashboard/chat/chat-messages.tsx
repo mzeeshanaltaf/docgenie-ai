@@ -10,7 +10,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
-  id?: number;
+  id?: string;
   reaction?: "like" | "dislike" | null;
 }
 
@@ -19,16 +19,6 @@ interface ChatMessagesProps {
   isLoading: boolean;
   streamingContent?: string;
   streamingStartTime?: Date;
-  sessionId?: string;
-}
-
-function normalizeContent(text: string): string {
-  return text.replace(/\\n/g, "\n");
-}
-
-function stripOuterQuotes(text: string): string {
-  const t = text.trim();
-  return t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t;
 }
 
 function formatTime(date: Date): string {
@@ -97,11 +87,9 @@ function CopyButton({ text }: { text: string }) {
 
 function ReactionButtons({
   messageId,
-  sessionId,
   initialReaction,
 }: {
-  messageId: number;
-  sessionId: string;
+  messageId: string;
   initialReaction?: "like" | "dislike" | null;
 }) {
   const [reaction, setReaction] = useState<"like" | "dislike" | null>(
@@ -115,11 +103,16 @@ function ReactionButtons({
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      fetch("/api/chat/reaction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, id: messageId, reaction: next }),
-      }).catch(() => {/* fire-and-forget */});
+      // Un-toggling removes the feedback; otherwise it replaces any earlier rating.
+      const url = `/api/messages/${messageId}/feedback`;
+      (next === null
+        ? fetch(url, { method: "DELETE" })
+        : fetch(url, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rating: next }),
+          })
+      ).catch(() => {/* fire-and-forget */});
     }, 600);
   };
 
@@ -156,7 +149,6 @@ export function ChatMessages({
   isLoading,
   streamingContent,
   streamingStartTime,
-  sessionId,
 }: ChatMessagesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -184,7 +176,7 @@ export function ChatMessages({
     <div ref={scrollRef} className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
         {messages.map((msg, i) => {
-          const content = normalizeContent(stripOuterQuotes(msg.content));
+          const content = msg.content;
           return (
             <div
               key={i}
@@ -218,10 +210,9 @@ export function ChatMessages({
                     {formatTime(msg.timestamp)}
                   </span>
                 )}
-                {msg.role === "assistant" && msg.id != null && sessionId && (
+                {msg.role === "assistant" && msg.id != null && (
                   <ReactionButtons
                     messageId={msg.id}
-                    sessionId={sessionId}
                     initialReaction={msg.reaction}
                   />
                 )}
@@ -244,7 +235,7 @@ export function ChatMessages({
             </div>
             <div className="flex flex-col items-start max-w-[80%]">
               <div className="relative rounded-2xl bg-muted px-4 py-2.5 text-sm leading-relaxed">
-                <MarkdownContent content={normalizeContent(stripOuterQuotes(streamingContent))} />
+                <MarkdownContent content={streamingContent} />
                 <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 align-text-bottom ml-0.5" />
               </div>
               {streamingStartTime && (
