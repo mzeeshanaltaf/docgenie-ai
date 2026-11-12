@@ -1,0 +1,59 @@
+name: Deploy backend to Coolify
+
+# Redeploys the private FastAPI backend (Coolify app `docgenie-api`) when backend
+# code changes. The container applies Alembic migrations on start (see
+# backend/Dockerfile), so a push that adds a migration needs nothing else.
+#
+# Frontend-only pushes do not touch the backend: the path filter below skips them,
+# which avoids restarting it (and cutting running chat streams and ingestions).
+#
+# Uses the same COOLIFY_API_TOKEN repo secret as deploy.yml (Coolify tokens are
+# team-wide). The app UUID is not a secret.
+#
+# If a change alters the API contract between frontend and backend, deploy the
+# backend first: run this workflow by hand (Actions > Run workflow) before pushing
+# the frontend change, or split the change over two pushes.
+
+env:
+  COOLIFY_URL: https://coolify.zeeshanai.cloud
+  COOLIFY_BACKEND_APP_UUID: re1atproolkc1rr443c2c6jg
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-coolify-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # POST is required: Coolify's /deploy route rejects GET with a 405 stub.
+      - name: Trigger Coolify backend deploy (with retries)
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          set -u
+          for i in 1 2 3 4 5; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 90 -X POST \
+              "${COOLIFY_URL}/api/v1/deploy?uuid=${COOLIFY_BACKEND_APP_UUID}&force=false" \
+              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" || echo "000")
+            echo "Attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Backend deploy queued successfully."
+              exit 0
+            fi
+            if [ "$i" -lt 5 ]; then
+              backoff=$((i * 20)) # 20s, 40s, 60s, 80s
+              echo "Retrying in ${backoff}s..."
+              sleep "$backoff"
+            fi
+          done
+          echo "::error::All 5 attempts to trigger the Coolify backend deploy failed."
+          exit 1

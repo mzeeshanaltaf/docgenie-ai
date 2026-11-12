@@ -25,4 +25,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import os,urllib.request as u;r=u.Request('http://127.0.0.1:8000/v1/health',headers={'X-Internal-Key':os.environ.get('INTERNAL_API_KEY','')});u.urlopen(r,timeout=4)" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Apply pending migrations, then serve. If a migration fails the container exits,
+# never turns healthy, and Coolify keeps the previous container running. `exec`
+# keeps uvicorn as PID 1 so it receives SIGTERM on redeploy. Migrations must stay
+# backward compatible: the old container serves while the new one migrates.
+# Run a single replica (two starting at once could race on the same migration).
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

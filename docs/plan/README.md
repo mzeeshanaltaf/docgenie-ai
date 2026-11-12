@@ -56,7 +56,7 @@ Implement Phase N of the DocGenie rebuild. Start by reading docs/plan/README.md 
 | 8 | [App surfaces redesign](phase-8-app-surfaces-redesign.md) | done | 2026-11-12 | f64fa10 |
 | 9 | [Landing and marketing](phase-9-landing-and-marketing.md) | done | 2026-11-12 | 0321edd |
 | 10 | [Docs and verification](phase-10-docs-and-verification.md) | done | 2026-11-12 | 6dc1d94 |
-| 11 | [Deployment](phase-11-deployment.md) | partial (live in production; 7 n8n workflows not yet deactivated) | 2026-11-12 | |
+| 11 | [Deployment](phase-11-deployment.md) | done (rebuild complete; contact stays on n8n) | 2026-11-12 | 32ef359 (deployed), bb10062 (docs) |
 
 Statuses: `not started`, `in progress`, `partial`, `done`.
 
@@ -137,6 +137,6 @@ When an assumption is confirmed or changed, record that in `progress.md` under *
 | 7 | `assistant-ui` (check `assistant-ui.com/llms.txt` for current API names), `pdf-preview` |
 | 11 | `add-minio-storage-to-coolify`, `add-app-to-coolify` |
 
-## When the rebuild is finished
+## Rebuild complete
 
-Phase 10 rewrites `CLAUDE.md` for the new architecture. At that point, remove the "Active rebuild" pointer from `CLAUDE.md` (or reduce it to a one-line mention of Phase 11 if deployment is still pending).
+All 11 phases are done (2026-11-12). `CLAUDE.md` no longer carries a rebuild pointer. The one thing that stays on n8n by design is the contact form.

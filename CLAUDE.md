@@ -1,9 +1,5 @@
 # CLAUDE.md
 
-## Rebuild status
-
-The n8n backend and the old UI were replaced in a phased rebuild (history, decisions and per-phase handoffs: [docs/plan/progress.md](docs/plan/progress.md)). The rebuilt system has been in production since 2026-11-12 (Phase 11). **One item is still open: deactivating the seven old DocGenie n8n workflows** (the contact workflow stays). Remove this section once that is done.
-
 ## Overview
 
 DocGenie lets a signed-in user upload PDF / DOCX / TXT / CSV files and chat with them. Citations open the source page.
@@ -115,7 +111,7 @@ Full, current detail is in [docs/plan/progress.md](docs/plan/progress.md) ("Cont
 
 Three things run on the Hostinger VPS under Coolify (UUIDs and details: Phase 11 entry in `docs/plan/progress.md`):
 - **Frontend** (`docgenie`): root `Dockerfile` (`output: "standalone"`, port 3000, **health check needs `curl`**), public at docgenie.zeeshanai.cloud. Pushing to `main` triggers `.github/workflows/deploy.yml` (secrets `COOLIFY_API_TOKEN`, `COOLIFY_APP_UUID`; no Coolify git webhook). All `NEXT_PUBLIC_*` and `DATABASE_URL` must be **build-time** env; `BACKEND_API_URL` and `INTERNAL_API_KEY` are runtime.
-- **Backend** (`docgenie-api`): `backend/Dockerfile` (base directory `/backend`, port 8000), **no public domain**, reachable only as `http://docgenie-api:8000` (a fixed Coolify network alias on the `coolify` network). The Dockerfile `HEALTHCHECK` sends `X-Internal-Key` (the slim image has no `curl`; Coolify's own health check stays off). **The GitHub Action does not deploy it**: after backend changes, redeploy it in Coolify or with `POST /api/v1/deploy?uuid=<backend uuid>`. Creating an app in Coolify assigns a public `sslip.io` domain by default: clear it.
+- **Backend** (`docgenie-api`): `backend/Dockerfile` (base directory `/backend`, port 8000), **no public domain**, reachable only as `http://docgenie-api:8000` (a fixed Coolify network alias on the `coolify` network). The Dockerfile `HEALTHCHECK` sends `X-Internal-Key` (the slim image has no `curl`; Coolify's own health check stays off). **Backend deploys and migrations are automatic**: `.github/workflows/deploy-backend.yml` redeploys it on pushes that touch `backend/**` (same `COOLIFY_API_TOKEN`; the app UUID is in the file), and the container runs `alembic upgrade head` before uvicorn (a failed migration stops the container, so Coolify keeps the old one). Migrations must be backward compatible (the old container serves while the new one migrates), single replica only, and back up first for anything risky. Creating an app in Coolify assigns a public `sslip.io` domain by default: clear it.
 - **MinIO** (`docgenie-minio` service): internal only, private bucket `docgenie`, bucket-scoped key. The `minio/mc` image is gone from Docker Hub: administer it with `docker exec minio-<uuid> mc ...` (the `minio/minio` image bundles `mc`).
 - Production and local development share one Postgres (`document_genie` schema), so a local `alembic upgrade head` or test run hits production data: be deliberate.
 

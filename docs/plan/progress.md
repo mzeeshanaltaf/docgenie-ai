@@ -11,7 +11,7 @@ No secrets anywhere in this file: record env var names and where their values li
 
 ## Current state
 
-_Last updated by: Phase 11 (partial: deployed and smoke-tested; n8n workflows not yet deactivated)_
+_Last updated by: Phase 11 (done; the rebuild is complete)_
 
 ### Production (Phase 11, 2026-11-12)
 All on the Hostinger VPS under Coolify, project **DocGenie** (`ljgyzo9d1hke7w07v92hu5tc`), environment `production`, server `localhost` (`j1234smx72kcb6aeovlaa9f7`). No secrets here.
@@ -25,7 +25,7 @@ All on the Hostinger VPS under Coolify, project **DocGenie** (`ljgyzo9d1hke7w07v
 - Frontend env added: `BACKEND_API_URL=http://docgenie-api:8000` and `INTERNAL_API_KEY` (a **new production key**, different from the one in the local `backend/.env`), both runtime-only. The nine dead `N8N_*` vars were deleted (production and preview entries); `N8N_WEBHOOK_BASE_URL`, `N8N_API_KEY`, `N8N_CONTACT_FORM_WEBHOOK_ID` remain.
 - Backend env (all runtime-only, set in Coolify, unquoted): `DATABASE_URL` (same Postgres as Better Auth and local development), `OPENAI_API_KEY`, `INTERNAL_API_KEY`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION=us-east-1`. Everything else uses the defaults in `config.py`.
 - Backend app settings: build pack dockerfile, base directory `/backend`, branch `main`, port 8000, health check **disabled in Coolify** (the Dockerfile `HEALTHCHECK` is used; container reports `healthy`).
-- The backend is **not** deployed by `.github/workflows/deploy.yml` (frontend UUID only). After backend changes: Coolify UI Deploy, or `POST /api/v1/deploy?uuid=re1atproolkc1rr443c2c6jg` through the Coolify API.
+- Backend deploys: `.github/workflows/deploy-backend.yml` triggers a Coolify deploy of `re1atproolkc1rr443c2c6jg` when a push to `main` touches `backend/**` (or by hand: Actions > Run workflow). The container runs `alembic upgrade head` before uvicorn (see `backend/Dockerfile`); a failing migration exits the container, so Coolify keeps the previous one. Added after Phase 11 (2026-11-12).
 - Production health check: `GET /v1/health` with the key returns `{"database":"ok","storage":"ok"}`; without the key it is 401.
 - Backup taken before anything else: `/root/backups/docgenie-document_genie-pre-phase11-20261112T065758Z.sql` on the VPS (`pg_dump -n document_genie`, 14 tables).
 
@@ -797,8 +797,8 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 
 ### Phase 11: Deployment to Coolify (2026-11-12)
 
-- **Status:** partial. Everything is live and verified except exit criterion 3 (the n8n workflows are not yet deactivated).
-- **Commit:** deployed code = merge commit `32ef359` on `main` (21 commits pushed). The documentation edits from this session are committed separately (hash in the status table once the user asks for the commit).
+- **Status:** done. (First written as partial on 2026-11-12 with the n8n step open; closed the same day, see "n8n retirement" below.)
+- **Commit:** deployed code = merge commit `32ef359` on `main` (21 commits pushed); documentation `bb10062`; the closing documentation edits (n8n retirement, rebuild marked complete) are a later docs-only commit.
 - **What was built / done:**
   1. Read-only checks: SSH and the Coolify API work; production `DATABASE_URL` equals the one in `backend/.env` (same Postgres), and `alembic current` = `0003 (head)`, so the migrations were already applied by Phases 1 to 4 and nothing was run against the database. The re-grant script dry run: 4 users, 0 without a credit account, so it was not run for real.
   2. Backup of the `document_genie` schema on the VPS (path under Production above).
@@ -810,7 +810,8 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 - **Exit criteria:**
   - PASS: production health check is green for database and storage.
   - PASS: production smoke test.
-  - **NOT DONE: the seven DocGenie n8n workflows are still active.** See follow-ups.
+  - PASS: **the seven DocGenie n8n workflows are deactivated** (see "n8n retirement" below).
+- **n8n retirement (2026-11-12, after the entry above was first written):** the user deactivated the seven workflows in the n8n UI and restarted n8n. Checked afterwards from the VPS: `n8n list:workflow --active=true` shows exactly one DocGenie workflow, `DocGenie Contact Form` (`A614gG19S0zm0wd7`), and 40 active workflows in total (the contact forms of other apps are among them); a live `POST /api/contact` returned `{"success":true}`; the site returns 200. The old rotated n8n key is no longer used by any DocGenie workflow, and the current `N8N_API_KEY` is used only by the contact route.
 - **Deviations from the phase file:**
   - `BACKEND_URL` is `BACKEND_API_URL` (as the Phase 10 handoff said).
   - 7 of the 8 workflows are to be retired, not 8: the contact workflow stays (confirmed with the user at the start of this session).
@@ -819,13 +820,13 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 - **Phase-specific handoff items:**
   - Coolify names and UUIDs, internal hostnames: see "Production (Phase 11)" in Current state.
   - Production smoke-test result: above.
-  - n8n deactivation date: **not yet done** (blank).
-  - "Remove the Active rebuild section from CLAUDE.md and mark the rebuild complete": **not done yet** because of the open n8n step. `CLAUDE.md` "Rebuild status" now says only that is left; remove it, and mark the rebuild complete in README.md, when it is done.
+  - n8n deactivation date: 2026-11-12.
+  - "Rebuild status" section removed from `CLAUDE.md`; the rebuild is marked complete in `docs/plan/README.md` and the root `README.md`.
 - **How to verify this phase still works:** `https://docgenie.zeeshanai.cloud` loads and `/api/dashboard` returns 401 signed out. On the VPS: `docker run --rm --network coolify curlimages/curl -sS -H "X-Internal-Key: <key>" http://docgenie-api:8000/v1/health` shows both checks `ok`, and the same URL without the header is 401. `docker ps` shows the three containers healthy/up.
 - **Open issues / follow-ups:**
-  1. **Deactivate these seven n8n workflows** (ids on n8n.zeeshanai.cloud): DocGenie Ingestion `GmztVC5kd8ZyBKXA`, Credits `sBUF2ZYdSfhzVMeA`, Data `dcoNTj1LyC1W9c1c`, Delete `f3p0Xr6pWSOE9yYI`, Analytics `XHITQ9v3uBNgBcRb`, AI Assistant `EzZYD6pSIcL8ylYr`, Title Generator `pkzNR7H8aVPW5vbH`. **Keep** `DocGenie Contact Form` (`A614gG19S0zm0wd7`). `Text Token Calculation` (`HW5byLzF2bUD2FfV`) is already inactive. The n8n API key available to this repo (`N8N_API_KEY`) is the webhook header key and gets 401 from the n8n public API. Two ways: toggle them in the n8n UI, or `docker exec n8n-n8n-1 n8n update:workflow --id=<id> --active=false` for each and then restart the shared n8n container (about 25 unrelated contact-form webhooks are down for that restart). The user was asked to choose; the plan says to wait until production has run cleanly.
-  2. Backend auto-deploy: the Action deploys the frontend only. Either add a second step with the backend UUID (the UUID is not a secret) or keep deploying it by hand. Not done to avoid restarting the backend (and cutting running ingestions and chat streams) on every frontend push.
+  1. ~~Deactivate the seven n8n workflows~~ **Done** (Ingestion `GmztVC5kd8ZyBKXA`, Credits `sBUF2ZYdSfhzVMeA`, Data `dcoNTj1LyC1W9c1c`, Delete `f3p0Xr6pWSOE9yYI`, Analytics `XHITQ9v3uBNgBcRb`, AI Assistant `EzZYD6pSIcL8ylYr`, Title Generator `pkzNR7H8aVPW5vbH`). They are inactive, not deleted, so they can be switched back on. `Text Token Calculation` (`HW5byLzF2bUD2FfV`) was already inactive. The repo's `N8N_API_KEY` is the webhook header key and cannot call the n8n public API.
+  2. ~~Backend auto-deploy~~ **Done after Phase 11**: `deploy-backend.yml` (path-filtered to `backend/**`) plus migrate-on-start in `backend/Dockerfile`. Tested locally: migrate no-op then uvicorn as PID 1; an unreachable database exits with code 1 and serves nothing.
   3. The hero replay figures (`hero-replay.tsx`) are still the development numbers. In production the smoke-test chat turn (one tool call and a citation) took 13.9 s end to end; the backend reaches Postgres through the VPS public address, which is worth tuning (docker0 gateway) before re-capturing the figures.
   4. Production and local development share one Postgres, so a local test run touches the production server (pytest uses a throwaway schema; `alembic upgrade head` does not).
   5. The stray schema `docgenie_test_1b4ffeb9` is still on that database (drop it when convenient).
-- **Notes for the next session:** one task left, the n8n step above, plus the two doc edits it unlocks. A secret-handling slip happened in this session: one Coolify API response echoed the backend's env values (database URL, OpenAI key, the new internal key and MinIO key) into the session output. They were not written to any file in the repo. If that transcript is treated as exposed, rotate the OpenAI key and the database password; the new internal key and MinIO key can be rotated in Coolify without data loss.
+- **Notes for the next session:** none required; the rebuild is complete. The "After this plan" recommendations in the phase file are not in scope. A secret-handling slip happened in this session: one Coolify API response echoed the backend's env values (database URL, OpenAI key, the new internal key and MinIO key) into the session output. They were not written to any file in the repo. If that transcript is treated as exposed, rotate the OpenAI key and the database password; the new internal key and MinIO key can be rotated in Coolify without data loss.
