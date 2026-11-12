@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="flex min-h-svh items-center justify-center px-4 py-16">
+    <AuthShell lead="Reset your password with a code from your email.">
       <ForgotPasswordForm />
-    </main>
+    </AuthShell>
   );
 }

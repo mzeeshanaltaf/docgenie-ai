@@ -43,13 +43,13 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Account menu"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+          className="rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <Avatar className="h-8 w-8">
             {user.image ? (
               <AvatarImage src={user.image} alt={user.name ?? ""} />
             ) : null}
-            <AvatarFallback className="bg-emerald-500/10 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <AvatarFallback className="bg-muted text-xs font-semibold text-foreground">
               {initials(user.name, user.email)}
             </AvatarFallback>
           </Avatar>
@@ -60,7 +60,7 @@ export function UserMenu({
           <span className="truncate text-sm font-medium">
             {user.name || "Account"}
           </span>
-          <span className="truncate text-xs font-normal text-muted-foreground">
+          <span className="truncate text-body-sm font-normal text-muted-foreground">
             {user.email}
           </span>
         </DropdownMenuLabel>

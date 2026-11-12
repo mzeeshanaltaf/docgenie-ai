@@ -1,181 +1,294 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight, MessageSquare, Upload } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardData } from "@/contexts/dashboard-data";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import Link from "next/link";
-import {
-  FileText,
-  Zap,
-  MessageSquare,
-  ArrowRight,
-  Upload,
-} from "lucide-react";
+import { PageHeader, PageShell, Section } from "@/components/app/page-shell";
+import { StatusTag } from "@/components/app/tag";
+import { ledgerLabel } from "@/lib/credits";
+import { describeIngestionFailure } from "@/lib/document-errors";
+import { formatDateTime, formatDay, formatDelta } from "@/lib/format";
+import { MAX_UPLOAD_MB, MAX_UPLOAD_PAGES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+
+function SectionLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 rounded-sm text-body-sm font-medium text-brand underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+    >
+      {children}
+      <ArrowRight aria-hidden className="size-3.5" />
+    </Link>
+  );
+}
+
+/** One series of the 14-day strip. Lightness steps, not hue, separate today from the past. */
+function DailyBars({
+  label,
+  unit,
+  days,
+}: {
+  label: string;
+  unit: string;
+  days: { date: string; value: number }[];
+}) {
+  const max = Math.max(1, ...days.map((d) => d.value));
+  const total = days.reduce((n, d) => n + d.value, 0);
+  const peak = days.reduce((a, b) => (b.value > a.value ? b : a), days[0]);
+  const summary = total
+    ? `${label} per day, last ${days.length} days: ${total} in total, most on ${formatDay(peak.date)} (${peak.value}).`
+    : `${label} per day, last ${days.length} days: none.`;
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="ds-label">{label}</span>
+        <span className="figure text-body-sm">
+          {total} <span className="text-muted-foreground">{unit}</span>
+        </span>
+      </div>
+      <div role="img" aria-label={summary} className="mt-2 flex h-10 items-end gap-0.5">
+        {days.map((d, i) => (
+          <div
+            key={d.date}
+            title={`${formatDay(d.date)}: ${d.value}`}
+            className="flex h-full flex-1 items-end"
+          >
+            <div
+              className={cn(
+                "w-full rounded-xs",
+                d.value === 0
+                  ? "bg-rule-strong"
+                  : i === days.length - 1
+                    ? "bg-chart-2"
+                    : "bg-chart-3"
+              )}
+              style={{ height: d.value === 0 ? "2px" : `${Math.max(10, (d.value / max) * 100)}%` }}
+            />
+          </div>
+        ))}
+      </div>
+      <div aria-hidden className="figure mt-1 flex justify-between text-caption text-muted-foreground">
+        <span>{formatDay(days[0].date)}</span>
+        <span>Today</span>
+      </div>
+    </div>
+  );
+}
+
+function OverviewSkeleton() {
+  return (
+    <PageShell>
+      <div className="space-y-2 pb-8">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <div className="page-grid gap-y-10">
+        <div className="col-span-4 space-y-10 md:col-span-12 lg:col-span-7">
+          {[0, 1].map((s) => (
+            <div key={s} className="border-t border-rule-strong pt-3">
+              <Skeleton className="mb-4 h-5 w-40" />
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between border-b border-rule py-2.5">
+                  <Skeleton className="h-4 w-48 max-w-[60%]" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="col-span-4 md:col-span-12 lg:col-span-4 lg:col-start-9">
+          <div className="border-t border-rule-strong pt-3">
+            <Skeleton className="mb-4 h-5 w-32" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function GetStarted({ documents, messages }: { documents: number; messages: number }) {
+  const steps = [
+    {
+      title: "Upload a file",
+      body: `PDF, DOCX, TXT or CSV, up to ${MAX_UPLOAD_MB} MB and ${MAX_UPLOAD_PAGES} pages. Scanned PDFs are read with OCR. Each upload uses one document credit.`,
+    },
+    {
+      title: "Wait for Ready",
+      body: "Reading takes a few seconds. The status changes to Ready, or says why it failed and refunds the credit.",
+    },
+    {
+      title: "Ask in chat",
+      body: "Answers cite the page they came from. Select a citation to open the source with the passage marked.",
+    },
+  ];
+  return (
+    <Section title="Start with a document">
+      <ol className="divide-y divide-rule border-t border-rule">
+        {steps.map((s, i) => (
+          <li key={s.title} className="grid grid-cols-[2.25rem_1fr] gap-x-2 py-4">
+            <span className="figure pt-0.5 text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
+            <div>
+              <p className="font-medium">{s.title}</p>
+              <p className="measure mt-0.5 text-body-sm text-muted-foreground">{s.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 text-body-sm text-muted-foreground">
+        You have <span className="figure text-foreground">{documents}</span> document credits and{" "}
+        <span className="figure text-foreground">{messages}</span> messages.
+      </p>
+    </Section>
+  );
 }
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
-  const { dashboard, totalDocuments, loading, creditBalance, messageBalance } =
-    useDashboardData();
+  const { dashboard, loading, creditBalance, messageBalance } = useDashboardData();
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-lg border border-border p-6 space-y-3">
-              <div className="flex justify-between">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4 rounded" />
-              </div>
-              <Skeleton className="h-8 w-16" />
-            </div>
-          ))}
-        </div>
-        <div className="rounded-lg border border-border p-6 space-y-4">
-          <Skeleton className="h-5 w-36" />
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-              <Skeleton className="h-4 w-20" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (loading || !dashboard) return <OverviewSkeleton />;
 
-  const credits = creditBalance ?? 0;
-  const messages = messageBalance ?? 0;
-
-  const recentSessions = dashboard?.recent_sessions ?? [];
-
-  const stats = [
-    {
-      label: "Documents Processed",
-      value: String(totalDocuments),
-      icon: FileText,
-    },
-    {
-      label: "Credits Remaining",
-      value: String(credits),
-      icon: Zap,
-    },
-    {
-      label: "Messages Remaining",
-      value: String(messages),
-      icon: MessageSquare,
-    },
-  ];
+  const isNew = dashboard.counts.documents === 0;
+  const { usage } = dashboard;
+  const hasSpend = usage.documents_spent + usage.messages_spent > 0;
+  const hasSidebarContent = hasSpend || dashboard.recent_sessions.length > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back, {firstName || "there"}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Here&apos;s an overview of your document activity.
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <Card key={label}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {label}
-              </CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Recent chat sessions or empty state */}
-      {recentSessions.length > 0 ? (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Recent Chats</CardTitle>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/dashboard/chat">View all</Link>
+    <PageShell>
+      <PageHeader
+        title={firstName ? `Welcome back, ${firstName}` : "Welcome back"}
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/chat">
+                <MessageSquare aria-hidden /> New chat
+              </Link>
             </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ul className="divide-y divide-border">
-              {recentSessions.map((session) => (
-                <li
-                  key={session.id}
-                  className="flex items-center justify-between px-6 py-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Button asChild>
+              <Link href="/dashboard/documents">
+                <Upload aria-hidden /> Upload
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      <div className="page-grid gap-y-10">
+        <div className="col-span-4 space-y-10 md:col-span-12 lg:col-span-7">
+          {isNew ? (
+            <GetStarted documents={creditBalance ?? 0} messages={messageBalance ?? 0} />
+          ) : (
+            <Section title="Recent documents" action={<SectionLink href="/dashboard/documents">All documents</SectionLink>}>
+              <ul className="divide-y divide-rule border-t border-rule">
+                {dashboard.recent_documents.map((d) => (
+                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {session.title || "Untitled Chat"}
-                      </p>
+                      <p className="truncate text-body-sm font-medium">{d.file_name}</p>
+                      {d.status === "failed" ? (
+                        <p className="text-caption text-muted-foreground">
+                          {describeIngestionFailure(d.error_code).title}. Credit refunded.
+                        </p>
+                      ) : null}
                     </div>
-                  </div>
-                  <div className="ml-4 shrink-0 text-right">
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(session.updated_at)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center py-14 text-center">
-            <Upload className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="mb-2 text-lg font-semibold">
-              Upload your first document
-            </h3>
-            <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-              Upload a PDF, Word doc, text file, or CSV and start asking
-              questions. DocGenie will read and answer instantly.
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                asChild
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
-              >
-                <Link href="/dashboard/documents">
-                  Upload document <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <Badge variant="secondary" className="mt-4">
-              Free · 5 document credits + 25 messages
-            </Badge>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                    <div className="flex items-center gap-3">
+                      <StatusTag status={d.status} />
+                      <span className="figure w-14 text-right text-caption text-muted-foreground">
+                        {formatDay(d.created_at)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          <Section title="Recent activity">
+            {dashboard.recent_activity.length === 0 ? (
+              <p className="border-t border-rule py-4 text-body-sm text-muted-foreground">
+                Credit changes show up here: uploads, chat messages and refunds.
+              </p>
+            ) : (
+              <ul className="divide-y divide-rule border-t border-rule">
+                {dashboard.recent_activity.map((a, i) => (
+                  <li key={`${a.created_at}-${i}`} className="flex items-center justify-between gap-4 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-body-sm font-medium">{ledgerLabel(a.kind, a.unit_type)}</p>
+                      {a.file_name ? (
+                        <p className="truncate text-caption text-muted-foreground">{a.file_name}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 items-baseline gap-4">
+                      <span className="figure text-caption text-muted-foreground">
+                        {formatDateTime(a.created_at)}
+                      </span>
+                      <span className="figure w-8 text-right text-body-sm font-medium">
+                        <span className="sr-only">
+                          {a.amount_delta >= 0 ? "Plus " : "Minus "}
+                        </span>
+                        {formatDelta(a.amount_delta)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+        </div>
+
+        {hasSidebarContent ? (
+          <div className="col-span-4 space-y-10 md:col-span-12 lg:col-span-4 lg:col-start-9">
+            {hasSpend ? (
+              <Section title="Usage, 14 days">
+                <div className="space-y-5 border-t border-rule pt-4">
+                  <DailyBars
+                    label="Messages"
+                    unit="sent"
+                    days={usage.daily.map((d) => ({ date: d.date, value: d.messages }))}
+                  />
+                  <DailyBars
+                    label="Documents"
+                    unit="uploaded"
+                    days={usage.daily.map((d) => ({ date: d.date, value: d.documents }))}
+                  />
+                  <dl className="space-y-1 border-t border-rule pt-3 text-body-sm">
+                    <div className="flex items-baseline justify-between">
+                      <dt className="text-muted-foreground">Documents, all time</dt>
+                      <dd className="figure">{usage.documents_spent}</dd>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                      <dt className="text-muted-foreground">Messages, all time</dt>
+                      <dd className="figure">{usage.messages_spent}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </Section>
+            ) : null}
+
+            {dashboard.recent_sessions.length > 0 ? (
+              <Section title="Recent chats" action={<SectionLink href="/dashboard/chat">Open chat</SectionLink>}>
+                <ul className="divide-y divide-rule border-t border-rule">
+                  {dashboard.recent_sessions.map((s) => (
+                    <li key={s.id} className="flex items-center justify-between gap-4 py-2.5">
+                      <p className="truncate text-body-sm">{s.title || "New chat"}</p>
+                      <span className="figure shrink-0 text-caption text-muted-foreground">
+                        {formatDay(s.updated_at)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </PageShell>
   );
 }

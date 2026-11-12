@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const ChatApp = dynamic(() => import("@/components/chat/chat-app"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[calc(100dvh-8rem)] min-h-96 overflow-hidden rounded-lg border border-border">
+    <div className="flex h-[calc(100dvh-3.5rem)] min-h-96 overflow-hidden">
       <div className="hidden w-64 shrink-0 space-y-2 border-r border-rule p-3 md:block">
         <Skeleton className="h-9 w-full" />
         {[...Array(5)].map((_, i) => (

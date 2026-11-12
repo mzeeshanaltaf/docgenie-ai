@@ -1,16 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient, useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FieldLabel, SettingRow } from "@/components/app/setting-row";
+
+/** Does this account sign in with a password? (Google-only accounts do not.) null while unknown. */
+export function useHasPassword(): boolean | null {
+  const [has, setHas] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    authClient
+      .listAccounts()
+      .then(({ data }) => {
+        if (!cancelled) setHas(Array.isArray(data) ? data.some((a) => a.providerId === "credential") : null);
+      })
+      .catch(() => {
+        if (!cancelled) setHas(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return has;
+}
 
 export function ProfileSection() {
   const { data: session, isPending, refetch } = useSession();
   const user = session?.user;
+  const hasPassword = useHasPassword();
 
   const [name, setName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -57,10 +79,7 @@ export function ProfileSection() {
         revokeOtherSessions: true,
       });
       if (error) {
-        toast.error(
-          error.message ||
-            "Could not change password. If you signed up with Google, you don't have a password."
-        );
+        toast.error(error.message || "Could not change the password.");
         return;
       }
       toast.success("Password changed.");
@@ -73,66 +92,51 @@ export function ProfileSection() {
 
   if (isPending) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading profile…
+      <div className="space-y-6 border-t border-rule py-6">
+        <Skeleton className="h-9 w-72 max-w-full" />
+        <Skeleton className="h-9 w-72 max-w-full" />
       </div>
     );
   }
 
   return (
-    <div className="grid max-w-2xl gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Profile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSaveName} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="profile-name" className="text-sm font-medium">
-                Name
-              </label>
-              <Input
-                id="profile-name"
-                value={displayName}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={60}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="profile-email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="profile-email"
-                type="email"
-                value={user?.email ?? ""}
-                disabled
-              />
-              <p className="text-xs text-muted-foreground">
-                Email cannot be changed.
-              </p>
-            </div>
-            <Button
-              type="submit"
-              disabled={savingName}
-              className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
-            >
-              {savingName ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div>
+      <SettingRow title="Name and email" description="Your name appears in the dashboard greeting.">
+        <form onSubmit={handleSaveName} className="max-w-sm space-y-4">
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="profile-name">Name</FieldLabel>
+            <Input
+              id="profile-name"
+              value={displayName}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={60}
+              autoComplete="name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="profile-email">Email</FieldLabel>
+            <Input id="profile-email" type="email" value={user?.email ?? ""} disabled />
+            <p className="text-caption text-muted-foreground">The email address cannot be changed.</p>
+          </div>
+          <Button type="submit" disabled={savingName}>
+            {savingName ? <Loader2 aria-hidden className="animate-spin" /> : null}
+            Save name
+          </Button>
+        </form>
+      </SettingRow>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Change password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleChangePassword} className="space-y-4">
+      <SettingRow
+        title="Password"
+        description="Changing it signs you out of your other devices."
+      >
+        {hasPassword === false ? (
+          <p className="measure text-body-sm text-muted-foreground">
+            This account signs in with Google, so there is no password to change.
+          </p>
+        ) : (
+          <form onSubmit={handleChangePassword} className="max-w-sm space-y-4">
             <div className="space-y-1.5">
-              <label htmlFor="current-password" className="text-sm font-medium">
-                Current password
-              </label>
+              <FieldLabel htmlFor="current-password">Current password</FieldLabel>
               <Input
                 id="current-password"
                 type="password"
@@ -143,9 +147,7 @@ export function ProfileSection() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="new-password" className="text-sm font-medium">
-                New password
-              </label>
+              <FieldLabel htmlFor="new-password">New password</FieldLabel>
               <Input
                 id="new-password"
                 type="password"
@@ -155,17 +157,15 @@ export function ProfileSection() {
                 minLength={8}
                 required
               />
+              <p className="text-caption text-muted-foreground">At least 8 characters.</p>
             </div>
             <Button type="submit" variant="outline" disabled={savingPassword}>
-              {savingPassword ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Update password"
-              )}
+              {savingPassword ? <Loader2 aria-hidden className="animate-spin" /> : null}
+              Update password
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        )}
+      </SettingRow>
     </div>
   );
 }

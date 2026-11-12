@@ -1,36 +1,21 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useDocGenieRuntime } from "@/lib/chat/runtime";
-import { DocumentViewer } from "./document-viewer";
 import { Thread } from "./thread";
 import { ChatThreadList } from "./thread-list";
-import { ViewerProvider, useViewer } from "./viewer-context";
-
-/** True from the `lg` breakpoint up, where the viewer docks beside the chat. */
-function useIsDesktop() {
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia("(min-width: 1024px)");
-      mq.addEventListener("change", cb);
-      return () => mq.removeEventListener("change", cb);
-    },
-    () => window.matchMedia("(min-width: 1024px)").matches,
-    () => true
-  );
-}
+import { ViewerDock } from "./viewer-dock";
+import { ViewerProvider } from "./viewer-context";
 
 function ChatLayout() {
-  const { target, close } = useViewer();
-  const desktop = useIsDesktop();
   const [listOpen, setListOpen] = useState(false);
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] min-h-96 overflow-hidden rounded-lg border border-border bg-background">
+    <div className="flex h-[calc(100dvh-3.5rem)] min-h-96 overflow-hidden bg-background">
       {/* Chats: a column from md up, a sheet below */}
       <aside className="hidden w-64 shrink-0 border-r border-rule bg-card md:block" aria-label="Chats">
         <ChatThreadList />
@@ -56,19 +41,7 @@ function ChatLayout() {
       </div>
 
       {/* Source viewer: docked from lg up, a sheet below */}
-      {target && desktop && (
-        <aside className="w-[min(40rem,46%)] shrink-0 border-l border-rule">
-          <DocumentViewer target={target} onClose={close} />
-        </aside>
-      )}
-      {!desktop && (
-        <Sheet open={target !== null} onOpenChange={(o) => !o && close()}>
-          <SheetContent side="right" showCloseButton={false} className="w-full max-w-none p-0 sm:max-w-xl">
-            <SheetTitle className="sr-only">Source document</SheetTitle>
-            {target && <DocumentViewer target={target} onClose={close} />}
-          </SheetContent>
-        </Sheet>
-      )}
+      <ViewerDock asideClassName="w-[min(40rem,46%)]" />
     </div>
   );
 }

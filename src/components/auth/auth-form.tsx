@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AuthHeading, authLinkClass } from "@/components/auth/auth-ui";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -78,23 +79,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 flex flex-col items-center text-center">
-        <Link href="/" className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/10">
-            <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">DocGenie</span>
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {isSignUp ? "Create your account" : "Welcome back"}
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {isSignUp
-            ? "Start chatting with your documents in seconds."
-            : "Sign in to continue to your dashboard."}
-        </p>
-      </div>
+    <div>
+      <AuthHeading title={isSignUp ? "Create your account" : "Welcome back"}>
+        {isSignUp
+          ? "Upload a document and ask your first question in a minute."
+          : "Sign in to continue to your dashboard."}
+      </AuthHeading>
 
       <Button
         type="button"
@@ -112,15 +102,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
       </Button>
 
       <div className="my-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">or</span>
-        <div className="h-px flex-1 bg-border" />
+        <div className="h-px flex-1 bg-rule" />
+        <span className="ds-label">or</span>
+        <div className="h-px flex-1 bg-rule" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignUp && (
           <div className="space-y-1.5">
-            <label htmlFor="name" className="text-sm font-medium">
+            <label htmlFor="name" className="text-body-sm font-medium">
               Name
             </label>
             <Input
@@ -134,7 +124,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </div>
         )}
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium">
+          <label htmlFor="email" className="text-body-sm font-medium">
             Email
           </label>
           <Input
@@ -149,13 +139,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium">
+            <label htmlFor="password" className="text-body-sm font-medium">
               Password
             </label>
             {!isSignUp && (
               <Link
                 href="/forgot-password"
-                className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                className={`text-caption ${authLinkClass}`}
               >
                 Forgot password?
               </Link>
@@ -172,15 +162,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
             required
           />
           {isSignUp && (
-            <p className="text-xs text-muted-foreground">
-              Must be at least 8 characters.
+            <p className="text-caption text-muted-foreground">
+              At least 8 characters.
             </p>
           )}
         </div>
         <Button
           type="submit"
           disabled={loading || googleLoading}
-          className="w-full bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
+          className="w-full"
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -192,11 +182,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 text-body-sm text-muted-foreground">
         {isSignUp ? "Already have an account? " : "Don't have an account? "}
         <Link
           href={isSignUp ? "/sign-in" : "/sign-up"}
-          className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          className={authLinkClass}
         >
           {isSignUp ? "Sign in" : "Sign up"}
         </Link>

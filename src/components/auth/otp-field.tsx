@@ -32,14 +32,15 @@ export function OtpField({
       onComplete={onComplete}
       disabled={disabled}
       autoFocus
-      containerClassName="justify-center gap-2"
+      containerClassName="gap-2"
+      aria-label="6-digit code"
     >
       <InputOTPGroup className="gap-2">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <InputOTPSlot
             key={i}
             index={i}
-            className="h-12 w-11 rounded-md border text-lg font-semibold data-[active=true]:border-emerald-500 data-[active=true]:ring-emerald-500/50"
+            className="figure h-12 w-11 rounded-md border text-lg font-semibold"
           />
         ))}
       </InputOTPGroup>

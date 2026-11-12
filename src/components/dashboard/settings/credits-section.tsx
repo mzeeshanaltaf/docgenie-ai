@@ -1,118 +1,102 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Zap, MessageSquare } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/contexts/dashboard-data";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SettingRow } from "@/components/app/setting-row";
+import { Tag } from "@/components/app/tag";
+import { ledgerLabel } from "@/lib/credits";
+import { formatDateTime, formatDelta } from "@/lib/format";
 import type { CreditHistoryOut, CreditTransaction } from "@/types/api";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export function CreditsSection() {
   const { creditBalance, messageBalance, loading } = useDashboardData();
 
   // The ledger is fetched here, not held in the dashboard context: it is only
   // needed on this tab. Re-fetched when the balances change (a new ledger row).
-  const [creditHistory, setCreditHistory] = useState<CreditTransaction[] | null>(null);
+  const [history, setHistory] = useState<CreditTransaction[] | null>(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/credits/history", { signal: controller.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<CreditHistoryOut>) : null))
-      .then((data) => data && setCreditHistory(data.transactions))
-      .catch(() => {});
+      .then((r) => (r.ok ? (r.json() as Promise<CreditHistoryOut>) : Promise.reject(new Error(String(r.status)))))
+      .then((data) => {
+        setHistory(data.transactions);
+        setFailed(false);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFailed(true);
+      });
     return () => controller.abort();
   }, [creditBalance, messageBalance]);
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex gap-4">
-          <Skeleton className="h-20 w-48 rounded-lg" />
-          <Skeleton className="h-20 w-48 rounded-lg" />
-        </div>
-        <Skeleton className="h-4 w-40" />
-        <div className="space-y-2">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-lg" />
-          ))}
-        </div>
+      <div className="space-y-4 border-t border-rule py-6">
+        <Skeleton className="h-10 w-72 max-w-full" />
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Balance cards */}
-      <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-            <Zap className="h-5 w-5 text-emerald-500" />
+    <div>
+      <SettingRow
+        title="Balance"
+        description="One document credit per upload and one message credit per chat turn. A document that fails to process is refunded."
+      >
+        <dl className="flex gap-10">
+          <div>
+            <dt className="ds-label">Documents</dt>
+            <dd className="figure mt-1 text-headline">{creditBalance ?? 0}</dd>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Document Credits</p>
-            <p className="text-3xl font-bold">{creditBalance ?? 0}</p>
+            <dt className="ds-label">Messages</dt>
+            <dd className="figure mt-1 text-headline">{messageBalance ?? 0}</dd>
           </div>
-        </div>
+        </dl>
+      </SettingRow>
 
-        <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
-            <MessageSquare className="h-5 w-5 text-blue-500" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Message Credits</p>
-            <p className="text-3xl font-bold">{messageBalance ?? 0}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Transaction history */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold">Transaction History</h3>
-        {!creditHistory || creditHistory.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No transactions yet.
+      <SettingRow title="History" description="Every change to your balance, newest first.">
+        {failed && !history ? (
+          <p role="alert" className="text-body-sm text-destructive">
+            The history could not be loaded. Reload the page to try again.
           </p>
-        ) : (
-          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-            {creditHistory.map((tx, i) => (
-              <div
-                key={tx.transaction_id ?? i}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium capitalize">
-                    {tx.description || tx.transaction_type}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {tx.unit_type && (
-                      <span className="mr-2 capitalize">{tx.unit_type}</span>
-                    )}
-                    {formatDate(tx.created_at)}
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={
-                    tx.amount_delta >= 0
-                      ? "border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
-                      : "border-red-300 dark:border-red-800 text-red-700 dark:text-red-400"
-                  }
-                >
-                  {tx.amount_delta >= 0 ? "+" : ""}
-                  {tx.amount_delta}
-                </Badge>
-              </div>
+        ) : !history ? (
+          <div className="space-y-2">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
+        ) : history.length === 0 ? (
+          <p className="text-body-sm text-muted-foreground">
+            No changes yet. Uploads, chat messages and refunds will be listed here.
+          </p>
+        ) : (
+          <ul className="divide-y divide-rule border-y border-rule">
+            {history.map((tx) => (
+              <li key={tx.transaction_id} className="flex items-center justify-between gap-4 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-body-sm font-medium">{ledgerLabel(tx.transaction_type, tx.unit_type)}</p>
+                  <p className="truncate text-caption text-muted-foreground">
+                    {tx.file_name_snapshot ? `${tx.file_name_snapshot} · ` : ""}
+                    <span className="figure">{formatDateTime(tx.created_at)}</span>
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Tag>{tx.unit_type === "document" ? "Doc" : "Msg"}</Tag>
+                  <span className="figure w-8 text-right text-body-sm font-medium">
+                    <span className="sr-only">{tx.amount_delta >= 0 ? "Plus " : "Minus "}</span>
+                    {formatDelta(tx.amount_delta)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </SettingRow>
     </div>
   );
 }

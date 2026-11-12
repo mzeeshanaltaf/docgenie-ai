@@ -1,27 +1,42 @@
 "use client";
 
-import { Zap, MessageSquare } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useDashboardData } from "@/contexts/dashboard-data";
+import { cn } from "@/lib/utils";
 
-export function CreditDisplay() {
+function Row({ label, value }: { label: string; value: number | null }) {
+  const out = value === 0;
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-body-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn("figure flex items-center gap-1.5", out && "text-warning")}>
+        {out ? (
+          <>
+            <AlertTriangle aria-hidden className="size-3.5" />
+            <span className="sr-only">None left: </span>
+          </>
+        ) : null}
+        {value ?? "–"}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * The credit balances. Shown once, in the sidebar (never also in the top bar).
+ * A balance of zero gets a warning icon and the word "none" for screen readers,
+ * so the state never rests on color alone.
+ */
+export function CreditDisplay({ className }: { className?: string }) {
   const { creditBalance, messageBalance } = useDashboardData();
 
-  if (creditBalance === null && messageBalance === null) return null;
-
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1">
-        <Zap className="h-3 w-3 text-emerald-500" />
-        <span className="text-xs font-medium tabular-nums">
-          {creditBalance ?? 0}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1">
-        <MessageSquare className="h-3 w-3 text-blue-500" />
-        <span className="text-xs font-medium tabular-nums">
-          {messageBalance ?? 0}
-        </span>
-      </div>
+    <div className={className} aria-label="Credits">
+      <p className="ds-label">Credits</p>
+      <dl className="mt-2 space-y-1">
+        <Row label="Documents" value={creditBalance} />
+        <Row label="Messages" value={messageBalance} />
+      </dl>
     </div>
   );
 }

@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { OtpField } from "@/components/auth/otp-field";
 import { EmailDeliveryNote } from "@/components/auth/email-delivery-note";
 import { useCooldown } from "@/components/auth/use-cooldown";
-import { BookOpen, KeyRound, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { AuthHeading, authLinkClass } from "@/components/auth/auth-ui";
 
 type Step = "request" | "reset";
 
@@ -106,37 +107,22 @@ export function ForgotPasswordForm() {
   const isRequest = step === "request";
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 flex flex-col items-center text-center">
-        <Link href="/" className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/10">
-            <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">DocGenie</span>
-        </Link>
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10">
-          <KeyRound className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {isRequest ? "Forgot your password?" : "Choose a new password"}
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          {isRequest ? (
-            "Enter your email and we'll send you a code to reset it."
-          ) : (
-            <>
-              Enter the 6-digit code sent to{" "}
-              <span className="font-medium text-foreground">{email}</span> and
-              pick a new password.
-            </>
-          )}
-        </p>
-      </div>
+    <div>
+      <AuthHeading title={isRequest ? "Forgot your password?" : "Choose a new password"}>
+        {isRequest ? (
+          "Enter your email and we will send you a code to reset it."
+        ) : (
+          <>
+            Enter the 6-digit code sent to{" "}
+            <span className="font-medium break-all text-foreground">{email}</span> and pick a new password.
+          </>
+        )}
+      </AuthHeading>
 
       {isRequest ? (
         <form onSubmit={handleRequest} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="email" className="text-sm font-medium">
+            <label htmlFor="email" className="text-body-sm font-medium">
               Email
             </label>
             <Input
@@ -152,7 +138,7 @@ export function ForgotPasswordForm() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
+            className="w-full"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -170,7 +156,7 @@ export function ForgotPasswordForm() {
             <OtpField value={otp} onChange={setOtp} disabled={loading} />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="new-password" className="text-sm font-medium">
+            <label htmlFor="new-password" className="text-body-sm font-medium">
               New password
             </label>
             <Input
@@ -183,12 +169,12 @@ export function ForgotPasswordForm() {
               minLength={8}
               required
             />
-            <p className="text-xs text-muted-foreground">
-              Must be at least 8 characters.
+            <p className="text-caption text-muted-foreground">
+              At least 8 characters.
             </p>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="confirm-password" className="text-sm font-medium">
+            <label htmlFor="confirm-password" className="text-body-sm font-medium">
               Confirm new password
             </label>
             <Input
@@ -205,7 +191,7 @@ export function ForgotPasswordForm() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
+            className="w-full"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -214,13 +200,13 @@ export function ForgotPasswordForm() {
             )}
           </Button>
 
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-body-sm text-muted-foreground">
             Didn&apos;t get it?{" "}
             <button
               type="button"
               onClick={handleResend}
               disabled={resending || cooldown.active || loading}
-              className="font-medium text-emerald-600 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline dark:text-emerald-400"
+              className={`${authLinkClass} disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline`}
             >
               {cooldown.active
                 ? `Resend in ${cooldown.remaining}s`
@@ -234,11 +220,11 @@ export function ForgotPasswordForm() {
         </form>
       )}
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-6 text-body-sm text-muted-foreground">
         Remembered it?{" "}
         <Link
           href="/sign-in"
-          className="font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          className={authLinkClass}
         >
           Sign in
         </Link>

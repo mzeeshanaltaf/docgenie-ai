@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthForm } from "@/components/auth/auth-form";
 
 export const metadata: Metadata = {
@@ -10,10 +11,10 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-svh items-center justify-center px-4 py-16">
+    <AuthShell lead="Your documents, chats and credit balance are where you left them.">
       <Suspense fallback={null}>
         <AuthForm mode="sign-in" />
       </Suspense>
-    </main>
+    </AuthShell>
   );
 }

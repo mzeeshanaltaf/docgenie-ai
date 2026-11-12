@@ -2,74 +2,78 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FileText, HelpCircle, LayoutDashboard, MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  BookOpen,
-  LayoutDashboard,
-  FileText,
-  MessageSquare,
-  Settings,
-  HelpCircle,
-} from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Wordmark } from "@/components/wordmark";
 import { CreditDisplay } from "./credit-display";
 
-const navItems = [
+export const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
-];
+] as const;
 
-export function Sidebar() {
+const rowClass =
+  "flex h-9 items-center gap-3 rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 [&_svg]:size-4 [&_svg]:shrink-0";
+
+/**
+ * The app sidebar. It sits on the second neutral layer (`bg-sidebar`), one
+ * step cooler than the content paper, and is separated from it by a hairline.
+ * The active item is the accent's "selected" job: semibold ink on a wash with
+ * a vermilion icon. No pill, no side stripe.
+ */
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-60 flex-col border-r border-border bg-background">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-2 px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-500/10">
-          <BookOpen className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <span className="text-base font-semibold tracking-tight">DocGenie</span>
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-4">
+        <Wordmark />
       </div>
 
-      <Separator />
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  pathname === href
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            </li>
-          ))}
+      <nav aria-label="Dashboard" className="flex-1 overflow-y-auto px-2 py-3">
+        <ul className="space-y-0.5">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const active =
+              pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+            return (
+              <li key={href}>
+                <Link
+                  href={href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    rowClass,
+                    active
+                      ? "bg-sidebar-accent font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  )}
+                >
+                  <Icon aria-hidden className={active ? "text-brand" : undefined} />
+                  {label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
-      <Separator />
-
-      {/* Bottom: credit badge + help */}
-      <div className="px-3 py-4 space-y-2">
-        <CreditDisplay />
-        <Link
-          href="#"
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <HelpCircle className="h-4 w-4" />
-          Help & Support
-        </Link>
+      <div className="shrink-0 border-t border-sidebar-border">
+        <CreditDisplay className="px-4 py-4" />
+        <div className="border-t border-sidebar-border px-2 py-2">
+          <Link
+            href="/contact"
+            onClick={onNavigate}
+            className={cn(
+              rowClass,
+              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            )}
+          >
+            <HelpCircle aria-hidden />
+            Help &amp; Support
+          </Link>
+        </div>
       </div>
     </aside>
   );

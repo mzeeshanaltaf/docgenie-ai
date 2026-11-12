@@ -21,3 +21,7 @@ export const OTP_SENDER_EMAIL = "noreply@verification.zeeshanai.cloud";
 export const MAX_UPLOAD_MB = 20;
 export const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 export const MAX_UPLOAD_PAGES = 50;
+
+/** What a new account starts with (backend signup grant). Shown on the auth pages. */
+export const SIGNUP_DOCUMENT_CREDITS = 5;
+export const SIGNUP_MESSAGE_CREDITS = 25;

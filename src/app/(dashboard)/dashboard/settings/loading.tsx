@@ -1,26 +1,21 @@
+import { PageShell } from "@/components/app/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsLoading() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <PageShell>
+      <div className="pb-8">
         <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-4 w-64" />
       </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1">
+      <div className="flex gap-6 border-b border-rule pb-3">
         {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-9 w-20 rounded-md" />
+          <Skeleton key={i} className="h-5 w-16" />
         ))}
       </div>
-
-      {/* Content placeholder */}
-      <div className="space-y-4 max-w-xl">
-        <Skeleton className="h-48 w-full rounded-lg" />
-        <Skeleton className="h-12 w-full rounded-lg" />
-        <Skeleton className="h-12 w-full rounded-lg" />
+      <div className="space-y-4 py-6">
+        <Skeleton className="h-9 w-72 max-w-full" />
+        <Skeleton className="h-9 w-72 max-w-full" />
       </div>
-    </div>
+    </PageShell>
   );
 }
