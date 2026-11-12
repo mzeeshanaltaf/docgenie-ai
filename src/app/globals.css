@@ -318,3 +318,14 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* A passage cited by a chat answer, marked on the PDF text layer and in plain
+   text views. The text layer glyphs are transparent, so this fill is the mark. */
+.cite-highlight {
+  background-color: color-mix(in oklch, var(--brand) 30%, transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--brand) 55%, transparent);
+}
+mark.cite-highlight {
+  color: inherit;
+}
