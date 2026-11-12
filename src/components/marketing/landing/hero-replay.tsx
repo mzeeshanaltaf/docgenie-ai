@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "motion/react";
-import { RotateCcw } from "lucide-react";
+import { Copy, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CitationMark, SourceChip } from "@/components/chat/citation-mark";
-import { MetricsRow } from "@/components/chat/metrics-row";
-import { ReasoningView } from "@/components/chat/reasoning-block";
-import { ToolTraceRow } from "@/components/chat/tool-trace";
+import { METRICS_ON_HOVER, MetricsRow } from "@/components/chat/metrics-row";
+import {
+  ThoughtProcessView,
+  thoughtSections,
+  type Step,
+} from "@/components/chat/thought-process-view";
 import type { Citation, MessageMetrics } from "@/types/api";
 import { EASE_OUT_EXPO, DURATION } from "@/lib/motion";
 import { useReducedMotionSafe } from "@/lib/use-reduced-motion";
@@ -15,15 +18,18 @@ import { cn } from "@/lib/utils";
 
 /**
  * The hero: a replay of one recorded chat turn, built from the same
- * presentational components the real chat uses (ReasoningView, ToolTraceRow,
+ * presentational components the real chat uses (ThoughtProcessView,
  * CitationMark, SourceChip, MetricsRow). Everything in it is the verbatim output
  * of one real run (2026-11-12, the real backend and model, a two-page sample
  * contract uploaded by a throwaway user): the question, the reasoning summary,
  * the tool call and its result, the answer, the citation and the metrics. Only
- * the pacing is ours; the replay is sped up.
+ * the pacing is ours; the replay is sped up, and so is its "Thinking" counter,
+ * which is scaled to land on the recorded time to first token.
  *
- * The one orchestrated sequence on the site:
- * question, reasoning, tool call, cited answer, sources, timing, source opens.
+ * The one orchestrated sequence on the site: question, thinking (counter,
+ * streamed reasoning, tool call), cited answer, sources, actions, source opens.
+ * As in the chat, the thinking block folds to "Thought for …" once the answer
+ * starts, and the metrics show only while the answer is hovered.
  *
  * Content is visible by default. The server render, no-JS, print and reduced
  * motion all show the finished state. The sequence only starts once the client
@@ -32,9 +38,12 @@ import { cn } from "@/lib/utils";
  */
 
 const QUESTION = "An invoice reaches the client on 3 March. What is the last day it can be paid?";
+/** The run's date, as the chat stamps a question. Its time of day was not recorded. */
+const ASKED_ON = { iso: "2026-11-12", label: "Nov 12, 2026" };
 
 const REASONING =
   "**Calculating due date**\n\nI need to compute a date that's 30 days from receipt. There's some ambiguity: if the invoice arrives on March 3, then counting from the day after would mean April 2 is the likely due date. The contract specifies that it should be within 30 days of receipt, so March 3 plus 30 days gives April 2, typically excluding the day of receipt. I should cite that March has 31 days, so it's stable.";
+const THOUGHT = thoughtSections(REASONING)[0];
 
 const TOOL = {
   name: "search_documents",
@@ -109,21 +118,27 @@ function AnswerStream({ n }: { n: number }) {
 
 /** The sequence, in order. Each stage mounts one more part of the turn. */
 const STAGE = {
-  reasoning: 1,
-  tool: 2,
-  toolDone: 3,
-  answer: 4,
-  sources: 5,
-  metrics: 6,
-  source: 7,
+  thinking: 1,
+  reasoning: 2,
+  tool: 3,
+  toolDone: 4,
+  answer: 5,
+  sources: 6,
+  footer: 7,
+  source: 8,
 } as const;
 const FINAL = STAGE.source;
 
 /** Milliseconds from the start of a run to each stage. */
-const AT = [500, 2800, 4200, 4800, 5900, 6500, 7600] as const;
+const AT = [400, 1100, 3500, 4800, 5400, 6500, 7000, 7900] as const;
 /** The answer streams in chunks of this many characters. */
 const CHUNK = 3;
 const CHUNK_MS = 35;
+/** The reasoning summary streams faster: it is longer and only skimmed. */
+const THOUGHT_CHUNK = 7;
+const THOUGHT_CHUNK_MS = 30;
+/** Replay ms to "recorded" ms for the counter, so it reaches the recorded first token. */
+const COUNTER_SCALE = (METRICS.ttft_ms ?? 0) / (AT[STAGE.answer - 1] - AT[STAGE.thinking - 1]);
 
 const rise = {
   hidden: { opacity: 0, y: 8 },
@@ -163,6 +178,8 @@ export function HeroReplay() {
   // Server render, no-JS and reduced motion all land on the finished turn.
   const [stage, setStage] = useState<number>(FINAL);
   const [chars, setChars] = useState(ANSWER_LENGTH);
+  const [thoughtChars, setThoughtChars] = useState(THOUGHT.body.length);
+  const [elapsed, setElapsed] = useState(0);
   const [animated, setAnimated] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(true);
 
@@ -176,10 +193,18 @@ export function HeroReplay() {
     setAnimated(true);
     setStage(0);
     setChars(0);
+    setThoughtChars(0);
+    setElapsed(0);
     setSourceOpen(false);
 
     const later = (ms: number, fn: () => void) => {
       timers.current.push(window.setTimeout(fn, ms));
+    };
+    /** Reveals `length` characters in chunks, starting now. */
+    const stream = (length: number, chunk: number, every: number, set: (n: number) => void) => {
+      for (let c = chunk; c < length + chunk; c += chunk) {
+        later((c / chunk) * every, () => set(Math.min(c, length)));
+      }
     };
 
     AT.forEach((ms, i) => {
@@ -187,11 +212,10 @@ export function HeroReplay() {
       later(ms, () => {
         setStage(next);
         if (next === STAGE.source) setSourceOpen(true);
-        if (next === STAGE.answer) {
-          for (let c = CHUNK; c < ANSWER_LENGTH + CHUNK; c += CHUNK) {
-            later((c / CHUNK) * CHUNK_MS, () => setChars(Math.min(c, ANSWER_LENGTH)));
-          }
+        if (next === STAGE.reasoning) {
+          stream(THOUGHT.body.length, THOUGHT_CHUNK, THOUGHT_CHUNK_MS, setThoughtChars);
         }
+        if (next === STAGE.answer) stream(ANSWER_LENGTH, CHUNK, CHUNK_MS, setChars);
       });
     });
   }, [clear]);
@@ -200,6 +224,39 @@ export function HeroReplay() {
     if (inView && !reduced) play();
     return clear;
   }, [inView, reduced, play, clear]);
+
+  const thinking = stage >= STAGE.thinking && stage < STAGE.answer;
+
+  // The "Thinking" counter, sped up like the rest of the replay.
+  useEffect(() => {
+    if (!thinking) return;
+    const startedAt = Date.now();
+    const t = window.setInterval(() => setElapsed((Date.now() - startedAt) * COUNTER_SCALE), 100);
+    return () => window.clearInterval(t);
+  }, [thinking]);
+
+  const steps = useMemo<Step[]>(() => {
+    const out: Step[] = [];
+    if (stage >= STAGE.reasoning) {
+      out.push({
+        kind: "thought",
+        key: "thought",
+        heading: THOUGHT.heading,
+        body: THOUGHT.body.slice(0, thoughtChars),
+        streaming: stage < STAGE.tool,
+      });
+    }
+    if (stage >= STAGE.tool) {
+      out.push({
+        kind: "tool",
+        key: "tool",
+        name: TOOL.name,
+        args: TOOL.args,
+        result: stage >= STAGE.toolDone ? TOOL.result : undefined,
+      });
+    }
+    return out;
+  }, [stage, thoughtChars]);
 
   const finished = stage === FINAL;
 
@@ -230,34 +287,31 @@ export function HeroReplay() {
         </div>
 
         <div className="min-h-[31rem] px-4 pt-5 pb-5 sm:px-5">
-          <div className="flex justify-end">
+          <div className="flex flex-col items-end gap-1">
+            <time dateTime={ASKED_ON.iso} className="text-caption text-muted-foreground">
+              {ASKED_ON.label}
+            </time>
             <p className="max-w-[85%] rounded-md bg-muted px-4 py-2.5 text-body text-foreground">
               {QUESTION}
             </p>
           </div>
 
-          <div className="mt-6 space-y-0">
-            {stage >= STAGE.reasoning && (
+          {/* `group/answer` reveals the metrics on hover, as in the chat. */}
+          <div className="group/answer mt-6 space-y-0">
+            {stage >= STAGE.thinking && (
               <Part animated={animated}>
-                <ReasoningView
-                  key={animated ? "live" : "static"}
-                  text={REASONING}
-                  running={stage >= STAGE.reasoning && stage < STAGE.toolDone}
-                />
-              </Part>
-            )}
-            {stage >= STAGE.tool && (
-              <Part animated={animated}>
-                <ToolTraceRow
-                  name={TOOL.name}
-                  args={TOOL.args}
-                  result={stage >= STAGE.toolDone ? TOOL.result : undefined}
+                <ThoughtProcessView
+                  steps={steps}
+                  active={thinking}
+                  elapsedMs={elapsed}
+                  thoughtMs={METRICS.ttft_ms}
+                  answered={stage >= STAGE.answer}
                 />
               </Part>
             )}
 
             {stage >= STAGE.answer && (
-              <Part animated={animated} className="pt-4">
+              <Part animated={animated}>
                 <p className="measure text-body">
                   <AnswerStream n={chars} />
                   {stage >= STAGE.sources && (
@@ -274,9 +328,17 @@ export function HeroReplay() {
               </Part>
             )}
 
-            {stage >= STAGE.metrics && (
-              <Part animated={animated} className="mt-4">
-                <MetricsRow metrics={METRICS} />
+            {stage >= STAGE.footer && (
+              <Part animated={animated} className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
+                {/* The chat's copy / like / dislike, drawn but inert here. */}
+                <div className="-ml-2 flex items-center gap-1 text-muted-foreground" aria-hidden>
+                  {[Copy, ThumbsUp, ThumbsDown].map((Icon, i) => (
+                    <span key={i} className="flex size-8 items-center justify-center">
+                      <Icon className="size-4" />
+                    </span>
+                  ))}
+                </div>
+                <MetricsRow metrics={METRICS} variant="inline" className={METRICS_ON_HOVER} />
               </Part>
             )}
           </div>

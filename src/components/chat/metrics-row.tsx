@@ -1,7 +1,16 @@
 import type { MessageMetrics } from "@/types/api";
 import { cn } from "@/lib/utils";
 
-const fmtMs = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);
+/**
+ * Hides the inline metrics until the enclosing `group/answer` is hovered or
+ * has keyboard focus. Keyboard focus only: a mouse click (e.g. on "Thought
+ * for") also focuses, and that focus would keep the metrics up after the
+ * pointer leaves.
+ */
+export const METRICS_ON_HOVER =
+  "opacity-0 transition-opacity duration-150 group-hover/answer:opacity-100 group-has-focus-visible/answer:opacity-100";
+
+const fmtMs =(ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms)} ms`);
 
 function metricItems(metrics: MessageMetrics): { label: string; value: string }[] {
   const items: { label: string; value: string }[] = [];
@@ -41,8 +50,8 @@ export function MetricsRow({
         {items.map((it) => (
           <div key={it.label} className="flex gap-1 whitespace-nowrap">
             <dt>{it.label}</dt>
-            {/* Same face as the question's date: the mono `figure` reads a size larger at 12px. */}
-            <dd className="tabular-nums">{it.value}</dd>
+            {/* Set exactly like the question's date: no mono `figure`, no tabular digits. */}
+            <dd>{it.value}</dd>
           </div>
         ))}
       </dl>

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { readCustom } from "@/lib/chat/convert";
 import { cn } from "@/lib/utils";
 import { DislikePopover } from "./dislike-popover";
-import { MetricsRow } from "./metrics-row";
+import { METRICS_ON_HOVER, MetricsRow } from "./metrics-row";
 
 const actionClass =
   "text-muted-foreground hover:text-foreground data-[active=true]:text-brand";
@@ -65,13 +65,7 @@ export function MessageFooter() {
         </DislikePopover>
       </div>
       {metrics && (
-        <MetricsRow
-          metrics={metrics}
-          variant="inline"
-          // Keyboard focus only: a mouse click (e.g. on "Thought for") also focuses,
-          // and that focus would keep the metrics up after the pointer leaves.
-          className="opacity-0 transition-opacity duration-150 group-hover/answer:opacity-100 group-has-focus-visible/answer:opacity-100"
-        />
+        <MetricsRow metrics={metrics} variant="inline" className={METRICS_ON_HOVER} />
       )}
     </div>
   );
