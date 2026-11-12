@@ -56,7 +56,7 @@ Implement Phase N of the DocGenie rebuild. Start by reading docs/plan/README.md 
 | 8 | [App surfaces redesign](phase-8-app-surfaces-redesign.md) | done | 2026-11-12 | f64fa10 |
 | 9 | [Landing and marketing](phase-9-landing-and-marketing.md) | done | 2026-11-12 | 0321edd |
 | 10 | [Docs and verification](phase-10-docs-and-verification.md) | done | 2026-11-12 | 6dc1d94 |
-| 11 | [Deployment](phase-11-deployment.md) | not started (needs separate confirmation) | | |
+| 11 | [Deployment](phase-11-deployment.md) | partial (live in production; 7 n8n workflows not yet deactivated) | 2026-11-12 | |
 
 Statuses: `not started`, `in progress`, `partial`, `done`.
 

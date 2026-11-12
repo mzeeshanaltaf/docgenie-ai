@@ -11,7 +11,23 @@ No secrets anywhere in this file: record env var names and where their values li
 
 ## Current state
 
-_Last updated by: Phase 10 (done)_
+_Last updated by: Phase 11 (partial: deployed and smoke-tested; n8n workflows not yet deactivated)_
+
+### Production (Phase 11, 2026-11-12)
+All on the Hostinger VPS under Coolify, project **DocGenie** (`ljgyzo9d1hke7w07v92hu5tc`), environment `production`, server `localhost` (`j1234smx72kcb6aeovlaa9f7`). No secrets here.
+
+| Piece | Coolify name | UUID | Reached at |
+|---|---|---|---|
+| Frontend | app `docgenie` | `j113egdv0pd7pdg1da10rrcw` | https://docgenie.zeeshanai.cloud (public) |
+| Backend | app `docgenie-api` | `re1atproolkc1rr443c2c6jg` | `http://docgenie-api:8000` (network alias on the shared `coolify` network; **no domain, no published port**) |
+| MinIO | service `docgenie-minio` | `3meryolonukwsbxbmokentg2` | `http://minio-3meryolonukwsbxbmokentg2:9000` (container name; the backend's `S3_ENDPOINT`), bucket `docgenie`, bucket-scoped user with policy `docgenie-rw` |
+
+- Frontend env added: `BACKEND_API_URL=http://docgenie-api:8000` and `INTERNAL_API_KEY` (a **new production key**, different from the one in the local `backend/.env`), both runtime-only. The nine dead `N8N_*` vars were deleted (production and preview entries); `N8N_WEBHOOK_BASE_URL`, `N8N_API_KEY`, `N8N_CONTACT_FORM_WEBHOOK_ID` remain.
+- Backend env (all runtime-only, set in Coolify, unquoted): `DATABASE_URL` (same Postgres as Better Auth and local development), `OPENAI_API_KEY`, `INTERNAL_API_KEY`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION=us-east-1`. Everything else uses the defaults in `config.py`.
+- Backend app settings: build pack dockerfile, base directory `/backend`, branch `main`, port 8000, health check **disabled in Coolify** (the Dockerfile `HEALTHCHECK` is used; container reports `healthy`).
+- The backend is **not** deployed by `.github/workflows/deploy.yml` (frontend UUID only). After backend changes: Coolify UI Deploy, or `POST /api/v1/deploy?uuid=re1atproolkc1rr443c2c6jg` through the Coolify API.
+- Production health check: `GET /v1/health` with the key returns `{"database":"ok","storage":"ok"}`; without the key it is 401.
+- Backup taken before anything else: `/root/backups/docgenie-document_genie-pre-phase11-20261112T065758Z.sql` on the VPS (`pg_dump -n document_genie`, 14 tables).
 
 ### How to run locally
 - Docs: the root [README.md](../../README.md) (local setup, env tables) and [CLAUDE.md](../../CLAUDE.md) (architecture and rules for Claude sessions) were rewritten in Phase 10 and describe the rebuilt system. `backend/.env.example` and the root `.env.example` match `config.py` and `src/lib/backend.ts` (checked by script in Phase 10).
@@ -231,6 +247,13 @@ All copy, figures and both JSON-LD objects live in `landing/content.ts` (`PIPELI
 **Brand assets:** logo source of truth is `src/lib/brand.ts` (`BRAND_HEX`: sRGB values of the paper / ink / vermilion tokens, for places that cannot read CSS variables; `LOGO_MARK` geometry). `components/wordmark.tsx` now exports `LogoMark` and `Wordmark` (ink only). Static `public/logo.svg` (reversed mark; the Organization JSON-LD `logo` points to it). Generated: `src/app/icon.tsx` (32 px) and `apple-icon.tsx` (180 px) draw the mark reversed (paper lines on an ink square); `opengraph-image.tsx` (1200 x 630) is paper, ink, hairlines, one citation mark and the real limits, using the default Satori font (no custom font loaded). `viewport.themeColor` uses `BRAND_HEX.paper` / `paperDark` (`#f8fafd` / `#0b1016`, unchanged values). Root `metadata` title / description / OG / Twitter rewritten without em dashes.
 
 ### Decisions made during implementation
+- **Phase 11 – fixed network alias `docgenie-api` for the backend** (Coolify `custom_network_aliases`). Coolify container names carry a timestamp that changes on every deploy, so they cannot be used as `BACKEND_API_URL`; the alias is stable. MinIO is addressed by its service container name (`minio-<service uuid>`), which is stable.
+- **Phase 11 – the backend's container health check is the Dockerfile `HEALTHCHECK`** (Python, sends `X-Internal-Key`), not a Coolify HTTP check and not `curl` in the image. Coolify uses the image's own check when it finds one; the app shows `running:healthy`. This follows the Phase 10 advice and differs from the phase file's "make sure `curl` is in the image".
+- **Phase 11 – the backend was built from a temporary branch `rebuild/fastapi-backend`** pushed from local `main`, so that it could be verified before the push to `main` replaced the live frontend. Afterwards the app was switched to `main` and the branch deleted from GitHub.
+- **Phase 11 – a new production `INTERNAL_API_KEY`** was generated for the frontend and backend apps in Coolify instead of reusing the local development key.
+- **Phase 11 – the app MinIO user is bucket-scoped** (policy `docgenie-rw`, `s3:*` on `docgenie` only), not the MinIO root key.
+- **Phase 11 – `git merge origin/main` (not rebase)** before the push: `origin/main` had one commit this repo lacked (the Coolify deploy workflow now needs POST). A merge keeps the commit hashes recorded in the status table valid.
+- **Phase 11 – the GitHub Action was left deploying the frontend only.** Backend auto-deploy was not added (not in the phase file; it would restart the backend on every frontend push). See follow-ups.
 - **Phase 10 – the zero-credit check set the balance to 2 in the database, then spent both with real turns** instead of burning 23 real model calls on the same code path. The state reached is the same (balance 0 through real spends); the 402 and the disabled composer were then checked on that real state.
 - **Phase 10 – `--shadow-2xs/xs/sm` are `0 0 #0000`, not `none`** (`globals.css`). A literal `none` inside Tailwind v4's composed `box-shadow` voids the whole declaration, which removed the keyboard focus ring from every control carrying `shadow-xs` (outline buttons, inputs, textareas, OTP fields, tabs) since Phase 6. A transparent zero shadow renders identically and keeps the ring. Found by the Phase 10 keyboard audit, not by any earlier phase.
 - **Phase 10 – `mark.cite-highlight` uses `var(--foreground)`**, not `color: inherit` (unlayered CSS beat the `text-foreground` class, so the hero excerpt inherited a muted gray at 3.9:1).
@@ -310,7 +333,8 @@ All copy, figures and both JSON-LD objects live in `landing/content.ts` (`PIPELI
 - **Legal copy** was brought in line with the shipped features in Phase 9 (see Decisions). Keep it true if limits, providers or deletion behavior change.
 - **Landing figures are copied, not imported:** the retrieval numbers in `landing/content.ts` (`PIPELINE_CONFIG`) mirror `backend/app/config.py`. There is no test that ties them together.
 - **Hero replay figures are from the development setup** (remote database: 5 s search, 9.5 s to first token). Refresh them in `hero-replay.tsx` after deployment if production is faster.
-- **About has no author name, link or contact detail**, and the OG image uses Satori's default font. Both are easy follow-ups if the user wants them.- **Coolify still holds the nine removed `N8N_*` vars** (the three contact-form ones must stay) and has no `BACKEND_API_URL` / `INTERNAL_API_KEY` (Phase 11).
+- **About has no author name, link or contact detail**, and the OG image uses Satori's default font. Both are easy follow-ups if the user wants them.
+- ~~Coolify still holds the nine removed `N8N_*` vars~~ **Resolved in Phase 11** (deleted; `BACKEND_API_URL` and `INTERNAL_API_KEY` added).
 - **A title is not generated if the client disconnects right after `message.end`** (found in Phase 10). `generate_title` runs inside the SSE generator after the last yield (`backend/app/services/chat.py`, near line 454), so closing the tab within a second or two of the answer finishing leaves the session untitled ("New chat" in the list). Rare; the fix is to run the title as a detached task, like the other persistence work (`drain_background`). Not changed in Phase 10 (Phase 3 code, verification phase).
 - **Citation marks are 18x13 px** (inline marks in the answer text and in the landing hero). They have a 32 px `SourceChip` equivalent under the answer, and WCAG 2.2 treats targets inside running text as exempt, so they were left as they are. Several icon buttons are 32 to 36 px (above the 24 px AA minimum, below 44 px). On the landing page and chat at 390 px: the wordmark link (105x20) and "View credits" (75x20) are under 24 px high; they are isolated, so the spacing exception applies. Revisit if touch comfort matters.
 - **The dashboard loading skeletons have no `<h1>`** (axe `page-has-heading-one` fires on a skeleton frame while data loads; the loaded pages have one). Transient; an `sr-only` h1 in each `loading.tsx` would clear it.
@@ -323,7 +347,7 @@ All copy, figures and both JSON-LD objects live in `landing/content.ts` (`PIPELI
 - Test and e2e runs are slow (about 1 s per DB round trip) because the dev database is the remote VPS Postgres. Production will have the database next to the backend.
 - Existing (pre-rebuild) users: handled. `credits.reserve` grants the signup credits lazily, and `scripts/regrant_signup_credits.py` was run once on 2026-11-11 (4 users granted 5 + 25).
 - The `STORAGE_FAILED` ingestion code exists but nothing sets it yet (the object is uploaded synchronously before ingestion starts; a failure there is a 503 at upload time with the row removed and the credit refunded).
-- n8n API key was rotated by the user (2026-11-11) and `.env.local` updated; `N8N_API_KEY` updated in Coolify for both the production and preview entries via the API (values verified equal to local). **Coolify env changes only take effect on the next deploy** (the var is build-time and runtime); the app has not been redeployed, so the live site may still hold the old key until then.
+- n8n API key was rotated by the user (2026-11-11) and `.env.local` updated; `N8N_API_KEY` updated in Coolify for both the production and preview entries via the API (values verified equal to local). **Coolify env changes only take effect on the next deploy** (the var is build-time and runtime); the app has not been redeployed, so the live site may still hold the old key until then. **Update (Phase 11): the frontend was redeployed on 2026-11-12, so the rotated key is live, and a production contact submission through it succeeded.**
 
 ---
 
@@ -770,3 +794,38 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 - **How to verify this phase still works:** MinIO up; `cd backend && uv run alembic current` (expect `0003`); `uv run pytest -q` (193 passed, about 13 min); from the repo root `npx tsc --noEmit` and `npm run build`; for the end to end, start the backend (`uv run uvicorn app.main:app --port 8765`) and `npm run dev`, sign up a throwaway `delivered+tag@resend.dev` user and set `"emailVerified"` true in `document_genie."user"`.
 - **Open issues / follow-ups:** see Current state > Known issues: no title if the client disconnects right after the answer (backend, small fix); the loading skeletons have no h1; small touch targets (documented, not a defect under WCAG 2.2 AA); the stray `docgenie_test_1b4ffeb9` schema (drop it); the About page still has no author; model prices still unknown; hero figures to refresh after deployment.
 - **Notes for the next session:** Phase 11 may start only after the user confirms. Read this entry's env list and migration steps first. The dev servers (3000, 3001, 8765) are stopped, the throwaway user and every row and object it created are deleted (including its `verification` row), and local MinIO is still running.
+
+### Phase 11: Deployment to Coolify (2026-11-12)
+
+- **Status:** partial. Everything is live and verified except exit criterion 3 (the n8n workflows are not yet deactivated).
+- **Commit:** deployed code = merge commit `32ef359` on `main` (21 commits pushed). The documentation edits from this session are committed separately (hash in the status table once the user asks for the commit).
+- **What was built / done:**
+  1. Read-only checks: SSH and the Coolify API work; production `DATABASE_URL` equals the one in `backend/.env` (same Postgres), and `alembic current` = `0003 (head)`, so the migrations were already applied by Phases 1 to 4 and nothing was run against the database. The re-grant script dry run: 4 users, 0 without a credit account, so it was not run for real.
+  2. Backup of the `document_genie` schema on the VPS (path under Production above).
+  3. **MinIO**: Coolify service `docgenie-minio`, official `minio/minio:latest`, on the `coolify` network, private bucket `docgenie`, bucket-scoped user. Provisioned with the skill's script, adapted (credentials to a local file instead of stdout; bucket and user created with `docker exec ... mc` because `minio/mc` is no longer pullable).
+  4. **Backend**: Coolify app `docgenie-api` from `backend/Dockerfile`, no domain, alias `docgenie-api`, runtime-only env. Healthy on first start; `/v1/health` shows database and storage `ok`.
+  5. **Frontend env**: added `BACKEND_API_URL` and `INTERNAL_API_KEY`, deleted nine dead `N8N_*` vars (prod and preview).
+  6. **Deploy**: after a second approval from the user, pushed `main`; the GitHub Action triggered Coolify, and the build finished and the container started.
+  7. **Production smoke test** (script in the session scratchpad, not the repo; real public site, real OpenAI, throwaway user `delivered+docgenie-smoke-<tag>@resend.dev`): sign-up, sign-in (email marked verified in the database as in Phase 10), dashboard with 5 + 25 credits, upload of a 2-page PDF (ready in 3 s), original streamed back from MinIO, chat over SSE (events `message.start > tool.start > tool.end > text.delta > citation > message.end > session.title`; answer "45 days" with a citation to the uploaded file; session titled; 1 message credit spent), document delete (204, then 404), contact form (`{"success":true}`, so the rotated `N8N_API_KEY` works), account delete (every row 0, including the Better Auth `user`; MinIO bucket 0 objects; old cookie 401). 20 of 20 checks passed. The first run's "no MinIO objects" check was a false pass (`mc` was denied); it was redone with the root key: 0 objects.
+- **Exit criteria:**
+  - PASS: production health check is green for database and storage.
+  - PASS: production smoke test.
+  - **NOT DONE: the seven DocGenie n8n workflows are still active.** See follow-ups.
+- **Deviations from the phase file:**
+  - `BACKEND_URL` is `BACKEND_API_URL` (as the Phase 10 handoff said).
+  - 7 of the 8 workflows are to be retired, not 8: the contact workflow stays (confirmed with the user at the start of this session).
+  - Health check via the Dockerfile `HEALTHCHECK`, not `curl` (see Decisions).
+  - Database step: no migration was needed (already at head), and no re-grant was needed.
+- **Phase-specific handoff items:**
+  - Coolify names and UUIDs, internal hostnames: see "Production (Phase 11)" in Current state.
+  - Production smoke-test result: above.
+  - n8n deactivation date: **not yet done** (blank).
+  - "Remove the Active rebuild section from CLAUDE.md and mark the rebuild complete": **not done yet** because of the open n8n step. `CLAUDE.md` "Rebuild status" now says only that is left; remove it, and mark the rebuild complete in README.md, when it is done.
+- **How to verify this phase still works:** `https://docgenie.zeeshanai.cloud` loads and `/api/dashboard` returns 401 signed out. On the VPS: `docker run --rm --network coolify curlimages/curl -sS -H "X-Internal-Key: <key>" http://docgenie-api:8000/v1/health` shows both checks `ok`, and the same URL without the header is 401. `docker ps` shows the three containers healthy/up.
+- **Open issues / follow-ups:**
+  1. **Deactivate these seven n8n workflows** (ids on n8n.zeeshanai.cloud): DocGenie Ingestion `GmztVC5kd8ZyBKXA`, Credits `sBUF2ZYdSfhzVMeA`, Data `dcoNTj1LyC1W9c1c`, Delete `f3p0Xr6pWSOE9yYI`, Analytics `XHITQ9v3uBNgBcRb`, AI Assistant `EzZYD6pSIcL8ylYr`, Title Generator `pkzNR7H8aVPW5vbH`. **Keep** `DocGenie Contact Form` (`A614gG19S0zm0wd7`). `Text Token Calculation` (`HW5byLzF2bUD2FfV`) is already inactive. The n8n API key available to this repo (`N8N_API_KEY`) is the webhook header key and gets 401 from the n8n public API. Two ways: toggle them in the n8n UI, or `docker exec n8n-n8n-1 n8n update:workflow --id=<id> --active=false` for each and then restart the shared n8n container (about 25 unrelated contact-form webhooks are down for that restart). The user was asked to choose; the plan says to wait until production has run cleanly.
+  2. Backend auto-deploy: the Action deploys the frontend only. Either add a second step with the backend UUID (the UUID is not a secret) or keep deploying it by hand. Not done to avoid restarting the backend (and cutting running ingestions and chat streams) on every frontend push.
+  3. The hero replay figures (`hero-replay.tsx`) are still the development numbers. In production the smoke-test chat turn (one tool call and a citation) took 13.9 s end to end; the backend reaches Postgres through the VPS public address, which is worth tuning (docker0 gateway) before re-capturing the figures.
+  4. Production and local development share one Postgres, so a local test run touches the production server (pytest uses a throwaway schema; `alembic upgrade head` does not).
+  5. The stray schema `docgenie_test_1b4ffeb9` is still on that database (drop it when convenient).
+- **Notes for the next session:** one task left, the n8n step above, plus the two doc edits it unlocks. A secret-handling slip happened in this session: one Coolify API response echoed the backend's env values (database URL, OpenAI key, the new internal key and MinIO key) into the session output. They were not written to any file in the repo. If that transcript is treated as exposed, rotate the OpenAI key and the database password; the new internal key and MinIO key can be rotated in Coolify without data loss.

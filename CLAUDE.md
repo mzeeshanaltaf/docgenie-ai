@@ -2,7 +2,7 @@
 
 ## Rebuild status
 
-The n8n backend and the old UI were replaced in a phased rebuild (history, decisions and per-phase handoffs: [docs/plan/progress.md](docs/plan/progress.md)). **Only Phase 11 (deployment to Coolify) is outstanding**, and it needs the user's separate confirmation. Until it is done, production still runs the old n8n build. Read [docs/plan/README.md](docs/plan/README.md) and [phase-11-deployment.md](docs/plan/phase-11-deployment.md) before touching deployment.
+The n8n backend and the old UI were replaced in a phased rebuild (history, decisions and per-phase handoffs: [docs/plan/progress.md](docs/plan/progress.md)). The rebuilt system has been in production since 2026-11-12 (Phase 11). **One item is still open: deactivating the seven old DocGenie n8n workflows** (the contact workflow stays). Remove this section once that is done.
 
 ## Overview
 
@@ -113,7 +113,11 @@ Full, current detail is in [docs/plan/progress.md](docs/plan/progress.md) ("Cont
 
 ## Deployment (Coolify)
 
-Not yet migrated to this architecture (Phase 11). Current production is the Next.js app only, built from the root `Dockerfile` (`output: "standalone"`; container **health check needs `curl`**, port 3000). Pushing to `main` triggers `.github/workflows/deploy.yml` (secrets `COOLIFY_API_TOKEN`, `COOLIFY_APP_UUID`; no Coolify git webhook). In Coolify, all `NEXT_PUBLIC_*` and `DATABASE_URL` must be **build-time** env. The backend image is `backend/Dockerfile` (port 8000, health check sends `X-Internal-Key`); MinIO is a separate Coolify service. Full env list and migration order: Phase 10 handoff in `docs/plan/progress.md`.
+Three things run on the Hostinger VPS under Coolify (UUIDs and details: Phase 11 entry in `docs/plan/progress.md`):
+- **Frontend** (`docgenie`): root `Dockerfile` (`output: "standalone"`, port 3000, **health check needs `curl`**), public at docgenie.zeeshanai.cloud. Pushing to `main` triggers `.github/workflows/deploy.yml` (secrets `COOLIFY_API_TOKEN`, `COOLIFY_APP_UUID`; no Coolify git webhook). All `NEXT_PUBLIC_*` and `DATABASE_URL` must be **build-time** env; `BACKEND_API_URL` and `INTERNAL_API_KEY` are runtime.
+- **Backend** (`docgenie-api`): `backend/Dockerfile` (base directory `/backend`, port 8000), **no public domain**, reachable only as `http://docgenie-api:8000` (a fixed Coolify network alias on the `coolify` network). The Dockerfile `HEALTHCHECK` sends `X-Internal-Key` (the slim image has no `curl`; Coolify's own health check stays off). **The GitHub Action does not deploy it**: after backend changes, redeploy it in Coolify or with `POST /api/v1/deploy?uuid=<backend uuid>`. Creating an app in Coolify assigns a public `sslip.io` domain by default: clear it.
+- **MinIO** (`docgenie-minio` service): internal only, private bucket `docgenie`, bucket-scoped key. The `minio/mc` image is gone from Docker Hub: administer it with `docker exec minio-<uuid> mc ...` (the `minio/minio` image bundles `mc`).
+- Production and local development share one Postgres (`document_genie` schema), so a local `alembic upgrade head` or test run hits production data: be deliberate.
 
 ## Pitfalls
 

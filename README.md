@@ -4,7 +4,7 @@
 
 Upload PDF, DOCX, TXT or CSV files and ask questions about them in plain language. Answers stream in with the model's reasoning summary and the tools it used, and every claim carries a citation that opens the source page with the passage marked.
 
-> **Deployment status:** the code in this repository is the rebuilt system (FastAPI backend, MinIO storage, new UI). The production site above has not been migrated yet (Phase 11 of the rebuild, see [docs/plan/](docs/plan/README.md)); it still runs the earlier n8n-backed build.
+> **Deployment status:** the rebuilt system (FastAPI backend, MinIO storage, new UI) has been live in production since 12 November 2026. The only open item is retiring the seven old n8n workflows (see [docs/plan/](docs/plan/README.md)).
 
 ## Features
 
@@ -187,7 +187,7 @@ Google sign-ins arrive verified and skip the flow.
 
 ## Deployment
 
-Production is a self-hosted [Coolify](https://coolify.io) instance on a Hostinger VPS. The frontend image is the root `Dockerfile` (Next.js `output: "standalone"`, port 3000, `curl` for the health check); pushing to `main` triggers `.github/workflows/deploy.yml`. Mark every `NEXT_PUBLIC_*` and `DATABASE_URL` as build-time, and never quote values. The backend (`backend/Dockerfile`, port 8000) and a private MinIO service are added to Coolify in Phase 11; the checklist and the env var list are in [docs/plan/progress.md](docs/plan/progress.md).
+Production is a self-hosted [Coolify](https://coolify.io) instance on a Hostinger VPS. The frontend image is the root `Dockerfile` (Next.js `output: "standalone"`, port 3000, `curl` for the health check); pushing to `main` triggers `.github/workflows/deploy.yml`. Mark every `NEXT_PUBLIC_*` and `DATABASE_URL` as build-time, and never quote values. The backend is a second Coolify app built from `backend/Dockerfile` (base directory `/backend`, port 8000) with **no public domain**: the frontend reaches it at `http://docgenie-api:8000` over the shared `coolify` network (`BACKEND_API_URL`), and its container health check sends `X-Internal-Key`. MinIO is a separate Coolify service on the same network with no public exposure and a bucket-scoped key. The backend is **not** deployed by the GitHub Action (it only triggers the frontend); redeploy it from Coolify or with `POST /api/v1/deploy?uuid=<backend app uuid>` after backend changes. The env var list and the Coolify names are in [docs/plan/progress.md](docs/plan/progress.md).
 
 ## License
 
