@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Schibsted_Grotesk, Spline_Sans_Mono } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MotionProvider } from "@/components/motion-provider";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -12,9 +13,19 @@ import "./globals.css";
 const umamiScriptUrl = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
 const umamiWebsiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 
-const geist = Geist({
-  variable: "--font-geist-sans",
+// One sans for UI and display, one mono for figures (see DESIGN.md, Typography).
+// Both are variable fonts; the CSS variables are mapped to --font-sans /
+// --font-mono in globals.css.
+const sans = Schibsted_Grotesk({
+  variable: "--font-schibsted",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const mono = Spline_Sans_Mono({
+  variable: "--font-spline-mono",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -49,8 +60,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020817" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafd" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1016" },
   ],
 };
 
@@ -71,7 +82,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.variable} font-sans antialiased`}>
+      <body className={`${sans.variable} ${mono.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -79,7 +90,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <JsonLd data={organizationSchema} />
-          {children}
+          <MotionProvider>{children}</MotionProvider>
           {/* Mounted at the root, not per-group: the marketing pages (sign-in,
               sign-up, verify-email, forgot-password, contact) report every
               error through toast, and without a Toaster in scope those calls

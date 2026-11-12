@@ -11,7 +11,7 @@ No secrets anywhere in this file: record env var names and where their values li
 
 ## Current state
 
-_Last updated by: Phase 5 (done)_
+_Last updated by: Phase 6 (done)_
 
 ### How to run locally
 - Frontend: `npm run dev` (localhost:3000). Needs the backend running and `BACKEND_API_URL` + `INTERNAL_API_KEY` in root `.env.local` (Phase 5). Full local stack = MinIO container + `uv run uvicorn app.main:app --port 8765` + `npm run dev`.
@@ -161,7 +161,25 @@ Another user's session, message or document is always `404 NOT_FOUND`, never `40
 
 **Signup credits:** `databaseHooks.user.create.after` in `src/lib/auth.ts` calls `POST /v1/users/{id}/signup-credits` (no `X-User-Id`); errors are logged and swallowed (the backend also grants lazily on first use).
 
+### Design system (Phase 6)
+
+Source of truth: [PRODUCT.md](../../PRODUCT.md) (audience, voice, principles; register `brand`, app surfaces use the product register), [DESIGN.md](../../DESIGN.md) (tokens, type, grid, components, motion, bans) and `DESIGN.json` (sidecar with component snippets), all at the repo root. Tokens live in `src/app/globals.css`.
+
+- **Fonts** (`next/font/google` in `src/app/layout.tsx`): **Schibsted Grotesk** for all words including display (`font-sans`, var `--font-schibsted`), **Spline Sans Mono** for figures and legend labels only (`font-mono`, var `--font-spline-mono`). Geist and DM Serif Display are gone.
+- **Colors (OKLCH, light / dark):** accent vermilion `oklch(0.55 0.19 34)` / `oklch(0.69 0.17 36)`; paper `oklch(0.985 0.004 250)` / `oklch(0.17 0.015 255)`; ink `oklch(0.205 0.02 255)` / `oklch(0.95 0.006 250)`; ink soft `oklch(0.48 0.022 255)` / `oklch(0.72 0.02 252)`; hairline rule `oklch(0.895 0.008 250)` / `oklch(0.31 0.016 255)`. Contrast was computed (text at least 4.9:1, ink 17:1) in both themes.
+- **Token names components use (Tailwind utilities):** surfaces `bg-background`, `bg-card`, `bg-muted`, `bg-accent` (NOTE: shadcn `accent` is a neutral hover wash, not the brand); text `text-foreground`, `text-muted-foreground`; **brand** `bg-brand`, `text-brand`, `text-brand-foreground`, `bg-brand-hover`, `bg-brand-subtle` (`primary` is an alias, so stock shadcn `bg-primary` is vermilion); lines `border-border` / `border-rule`, `border-rule-strong`, `border-input` (control edge); `ring-ring`; `bg-overlay`; status `text-destructive` / `bg-destructive` + `text-destructive-foreground`, `text-success`, `text-warning`; charts `chart-1..5`.
+- **Type scale utilities:** `text-display`, `text-section`, `text-headline`, `text-title`, `text-body`, `text-body-sm`, `text-caption`, `text-label` (each carries its line height). Helpers (`@utility`): `figure` (mono tabular figures), `ds-label` (legend caption), `page-container`, `page-grid` (4 / 12 columns), `measure` (68ch).
+- **Radii** are 2 to 6px (`rounded-xs` ... `rounded-lg`); `shadow-2xs/xs/sm` are `none`, only `shadow-md` and `shadow-lg` render (overlays). Default transition is 150 ms ease-out-quart.
+- **Motion:** `motion` 14.12 installed. `src/lib/motion.ts` (easing, durations, a `reveal` preset), `src/components/motion-provider.tsx` (`MotionConfig reducedMotion="user"`, mounted in the root layout). CSS tokens `ease-out-expo` and `ease-out-quart`; a global `prefers-reduced-motion` rule collapses CSS transitions.
+- **Read before building a surface:** any UI: DESIGN.md Overview (grid, spacing, motion), Colors (The One Mark Rule), Do's and Don'ts. Chat UI and viewer (7): Typography (figures), Components (citation mark, figure row, panel, tag). App surfaces and shared primitives (8): Components, Elevation, Typography hierarchy. Landing (9): Overview (layout, hero sequence, scroll reveals), Typography (display), Do's and Don'ts.
+
 ### Decisions made during implementation
+- **Phase 6 – fonts: Schibsted Grotesk + Spline Sans Mono.** Chosen with the skill's font procedure (voice: exact, annotated, unhurried; physical object: an engineering datasheet with ruled figure tables). Schibsted is a sturdy news grotesk with a wide weight range, so one family covers display to caption; Spline Sans Mono is compact with tabular figures and a slashed zero for the data columns. Rejected: the skill's reflex list (Inter, IBM Plex, Space Grotesk, DM Sans, ...), Geist (the old font) and DM Serif Display, and wider monos (Azeret, Martian) that bloat dense figure tables. Both load through `next/font`, so they are self-hosted and preloaded.
+- **Phase 6 – neutral hue is cool graphite (hue 250 to 255), not warm.** The brief said "cool-neutral ... tinted toward the brand hue"; vermilion (hue 34) is warm, so tinting literally would warm the paper. Chosen: cool-tinted neutrals (chroma at most 0.025) with the warm vermilion as the complement, which reads as red pencil on graphite paper.
+- **Phase 6 – the accent is `brand`, with `primary` as an alias.** So the stock shadcn primitives become vermilion without edits, while bespoke components can say `bg-brand`. shadcn's `accent` stays a neutral hover wash.
+- **Phase 6 – the contrast of destructive vs brand.** Both are red-orange family, so destructive is a darker, bluer crimson (hue 18) and must always carry an icon or word (DESIGN.md, The Not-Color-Alone Rule).
+- **Phase 6 – "No pill badges" applied to the `Badge` primitive** (now `rounded-sm`) and avatars are square-ish (`rounded-sm`); focus ring stays the 3px 50% vermilion ring from shadcn (crisp datasheet look was not worth restyling every primitive).
+- **Phase 6 – PRODUCT.md was written without a live interview.** The plan says approving it counts as confirming the brief, and the design brief supplies audience, scene, lane, anti-references and accessibility; the skill's questions were answered from the brief rather than asked again. DESIGN.md was written forward-looking (not scanned), as the phase file requires, with the OKLCH values in the frontmatter (the Stitch linter warns about non-hex colors; accepted).
 - **Credits assumption confirmed by the user (2026-11-11):** 5 documents + 25 messages on signup, 1 per upload and 1 per chat turn.
 - **Failed documents can be re-uploaded.** A `failed` row would otherwise block the same file through the unique `(user_id, checksum)` index, so the create transaction deletes a same-checksum `failed` row first. Any other state is `409 DUPLICATE_DOCUMENT`.
 - **A document deleted while `processing` is not refunded** (the credit was spent on the work in flight); its ingestion then finds no row and ends quietly.
@@ -199,6 +217,9 @@ Another user's session, message or document is always `404 NOT_FOUND`, never `40
 - **Phase 5 – upload limits** are `MAX_UPLOAD_MB = 20` / `MAX_UPLOAD_PAGES = 50` in `src/lib/constants.ts` (UI text and an early size check); the backend is the authority.
 
 ### Known issues and deferred work
+- **Leftover emerald and old styling outside `src/components/ui` (Phase 6 handoff):** the shared primitives are clean, but these still carry `emerald-*` (and other raw palette classes) and render emerald until their phase rewrites them: `components/auth/{auth-form,forgot-password-form,otp-field,verify-email-form}.tsx`, `components/contact/contact-form.tsx`, `components/dashboard/{sidebar,credit-display}.tsx`, `components/dashboard/chat/{chat-input,chat-messages,chat-sidebar}.tsx`, `components/dashboard/documents/document-upload.tsx`, `components/dashboard/settings/{credits-section,profile-section}.tsx`, `components/user-menu.tsx`, `components/marketing/{navbar,footer}.tsx`, `app/(dashboard)/dashboard/page.tsx`, `app/(marketing)/{page,about}/page.tsx`, `app/not-found.tsx`. Phases 7 and 8 own the app and auth ones, Phase 9 the marketing ones (navbar and footer are shared by Phases 8 and 9). The marketing pages also use `var(--font-display)` with an italic style; it is aliased to the sans in `globals.css` (`body { --font-display }`) so they still render, with a synthesized italic. Delete the alias when those pages are rewritten.
+- **`CLAUDE.md` "Styling" section still describes the emerald classes** (Phase 10 rewrites it).
+- **Root layout `<title>` and the marketing copy still contain em dashes** ("DocGenie — Chat With Your Documents", etc.); DESIGN.md forbids them. Phase 9 rewrites that copy and the metadata.
 - **Legal copy fixed after Phase 5 (2026-11-12):** the privacy page now describes OpenAI processing (questions, passages, embeddings, titles, scanned-page images; sent with storage disabled), Resend, Upstash and the self-hosted n8n contact workflow, stored data and deletion, with one consistent "last updated" date; the landing FAQ and About line that said data is "never shared with third parties" were corrected. The terms needed no change. Phase 9 should keep these claims true when it rewrites the marketing pages.
 - **Root `README.md` still documents the n8n architecture and env vars** (Phase 10 rewrites docs); `CLAUDE.md`'s n8n sections are stale until then too.
 - **Coolify still holds the removed `N8N_*` vars** and has no `BACKEND_API_URL` / `INTERNAL_API_KEY` (Phase 11).
@@ -434,4 +455,33 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
   - Phase 11: set `BACKEND_API_URL` and `INTERNAL_API_KEY` in Coolify (runtime), remove the nine dead `N8N_*` vars. The no-JS contact redirect builds its URL from the request, which showed `0.0.0.0` only because dev runs with `--hostname 0.0.0.0`; check it behind Coolify's proxy.
   - Phase 4's backend work (including the `0003` migration) is still uncommitted in the working tree alongside this phase's changes.
 - **Notes for the next session:** Phase 6 (design system) has no technical dependency; Phases 7 and 8 follow it. The dev servers are not left running and the throwaway test users were deleted.
+
+### Phase 6: Product and design system (2026-11-12)
+
+- **Status:** done
+- **Commit:** not committed
+- **What was built:**
+  - `PRODUCT.md`, `DESIGN.md` and `DESIGN.json` at the repo root (north star "The Reviewer's Desk"; the six DESIGN.md sections in the skill's fixed order, with grid, spacing and motion folded into Overview).
+  - `src/app/globals.css` rewritten: OKLCH tokens for light and dark, mapped through `@theme inline` (surfaces, `brand` family, rules, status, charts, sidebar, type scale, radii, shadows, easing, container width), plus the `figure`, `ds-label`, `page-container`, `page-grid` and `measure` utilities and a global reduced-motion rule.
+  - `src/app/layout.tsx`: Schibsted Grotesk and Spline Sans Mono via `next/font/google`, theme-color meta updated, `MotionProvider` mounted. `src/app/(marketing)/layout.tsx`: DM Serif Display removed.
+  - New: `src/components/motion-provider.tsx`, `src/lib/motion.ts`. `motion` added to `package.json`.
+  - `src/components/ui/*`: no palette classes were present; removed the leftovers that fought the new system (`bg-black/50` to `bg-overlay`, `text-white` to `text-destructive-foreground`, `bg-ds-gray-900` to `bg-muted-foreground`, dark-mode `bg-input/30` fills, `transition-all` to `transition-colors`), pill badge and round avatar to `rounded-sm`, card to `rounded-lg` without shadow, progress to a 6px square track that animates `transform`.
+- **Exit criteria:**
+  - PASS: `PRODUCT.md` and `DESIGN.md` exist at the root and cover each point of the brief (audience and scene in PRODUCT.md; lane, color, type, layout, motion, copy rules and bans in DESIGN.md).
+  - PASS (tokens): `npx tsc --noEmit` and `npm run build` are clean. Contrast was computed for every text and control pair in both themes. A real-browser render of `/sign-in` (headless Edge, system dark) showed the dark tokens and the new sans; a specimen page using the compiled CSS showed light and dark side by side. NOT exercised: clicking the theme toggle (the `ThemeProvider` and the `.dark` class mechanism are unchanged).
+  - PASS (fonts): the served HTML preloads both `woff2` files, both return 200, and the compiled CSS defines `Schibsted Grotesk` and `Spline Sans Mono`; the sans is visibly rendered in the screenshot. Checked with curl and a headless screenshot, not the DevTools network panel. The mono was verified by the preload and CSS only, because the specimen's cross-origin font load fell back.
+  - PASS: `grep -r emerald src/components/ui` returns nothing (it already returned nothing before this phase).
+- **Deviations from the phase file:**
+  - Added `src/lib/motion.ts` and `src/components/motion-provider.tsx`, and a `DESIGN.json` sidecar (not listed in the phase file) so Phases 7 to 9 get reduced-motion handling and shared easing without re-deriving them.
+  - Non-`ui` shared components that carry emerald (navbar, footer, sidebar, user menu, credit display, auth forms) were left for their phases; they render emerald until then (list under Known issues).
+  - No visual probes, no live interview (see Decisions).
+- **Decisions made:** see Current state > Decisions (fonts, cool neutral hue, brand/primary alias, destructive vs brand, square badges and avatars, no live interview).
+- **Phase-specific handoff items:** fonts, accent and neutral OKLCH values, token names, which DESIGN.md sections to read and the leftover emerald list are all under Current state > Design system (Phase 6) and Known issues.
+- **How to verify this phase still works:** `npx tsc --noEmit`; `npm run build`; `grep -rn emerald src/components/ui` (expect nothing); `npm run dev` and open `/sign-in` in light and dark; check the network panel for two `woff2` requests.
+- **Open issues / follow-ups:**
+  - Phases 7 to 9: replace the leftover emerald and raw palette classes with tokens as each surface is rebuilt; delete the `--font-display` alias in `globals.css` when the marketing pages are rewritten.
+  - Phase 7: the citation mark and figure row are specified in DESIGN.md Components but not yet built as React components; build them with the chat UI.
+  - Phase 9: fix the em dashes in the metadata and copy; `viewport.themeColor` already matches the new paper colors.
+  - Phase 10: `CLAUDE.md` Styling section.
+- **Notes for the next session:** Phase 7 or 8 can start. Read `PRODUCT.md` and the DESIGN.md sections listed under Current state > Design system before building. The impeccable skill's `craft` step wants a confirmed shape brief per surface; the plan treats approval of the overall plan as that confirmation, as in this phase.
 

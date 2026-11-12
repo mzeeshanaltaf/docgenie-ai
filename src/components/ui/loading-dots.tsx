@@ -18,7 +18,7 @@ export const LoadingDots = ({ size = 6, children }: LoadingDotsProps) => {
       {dots.map((dot, i) => (
         <span
           key={i}
-          className="bg-ds-gray-900 inline-block rounded-full animate-loading"
+          className="bg-muted-foreground inline-block rounded-full animate-loading"
           style={{ height: size, width: size, ...dot }}
         />
       ))}

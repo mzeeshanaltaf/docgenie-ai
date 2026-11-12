@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T00:00:00.000Z",
+  "title": "Design System: DocGenie",
+  "extensions": {
+    "colorMeta": {
+      "vermilion": { "role": "primary", "displayName": "Vermilion", "canonical": "oklch(0.55 0.19 34)", "tonalRamp": ["oklch(0.2 0.06 34)", "oklch(0.3 0.1 34)", "oklch(0.4 0.14 34)", "oklch(0.49 0.18 34)", "oklch(0.55 0.19 34)", "oklch(0.69 0.17 36)", "oklch(0.85 0.08 34)", "oklch(0.95 0.025 34)"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "oklch(0.985 0.004 250)", "tonalRamp": ["oklch(0.17 0.015 255)", "oklch(0.205 0.02 255)", "oklch(0.31 0.016 255)", "oklch(0.48 0.022 255)", "oklch(0.63 0.02 252)", "oklch(0.78 0.012 252)", "oklch(0.895 0.008 250)", "oklch(0.985 0.004 250)"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "oklch(0.205 0.02 255)", "tonalRamp": ["oklch(0.15 0.02 255)", "oklch(0.205 0.02 255)", "oklch(0.3 0.02 255)", "oklch(0.4 0.022 255)", "oklch(0.48 0.022 255)", "oklch(0.6 0.02 252)", "oklch(0.78 0.012 252)", "oklch(0.95 0.006 250)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Marketing hero only, one per page." },
+      "figure": { "displayName": "Figure", "purpose": "Timings, token counts, page refs, credit counts. Tabular mono." },
+      "label": { "displayName": "Label", "purpose": "Short uppercase legend above a figure or column." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 8px 24px -8px oklch(0.2 0.02 255 / 0.18), 0 0 0 1px oklch(0.2 0.02 255 / 0.06)", "purpose": "Popovers, dropdowns, tooltips." },
+      { "name": "modal", "value": "0 16px 40px -12px oklch(0.2 0.02 255 / 0.22), 0 0 0 1px oklch(0.2 0.02 255 / 0.06)", "purpose": "Dialogs and sheets." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrances, reveals, panel open." },
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Color and opacity state changes." },
+      { "name": "duration-state", "value": "150ms to 250ms", "purpose": "In-app state transitions." },
+      { "name": "duration-reveal", "value": "600ms", "purpose": "Marketing scroll reveals and the hero sequence." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action in a region.",
+      "html": "<button class=\"ds-btn-primary\">Upload document</button>",
+      "css": ".ds-btn-primary { background: var(--brand); color: var(--brand-foreground); height: 36px; padding: 0 16px; border: 0; border-radius: 4px; font: 500 14px var(--font-schibsted, system-ui, sans-serif); cursor: pointer; transition: background-color 150ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-primary:hover { background: var(--brand-hover); } .ds-btn-primary:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Default secondary action.",
+      "html": "<button class=\"ds-btn-outline\">Download</button>",
+      "css": ".ds-btn-outline { background: var(--background); color: var(--foreground); height: 36px; padding: 0 16px; border: 1px solid var(--input); border-radius: 4px; font: 500 14px var(--font-schibsted, system-ui, sans-serif); cursor: pointer; transition: background-color 150ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-outline:hover { background: var(--accent); } .ds-btn-outline:focus-visible { outline: 0; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Single-line text field.",
+      "html": "<input class=\"ds-input\" placeholder=\"Ask about this document\">",
+      "css": ".ds-input { height: 36px; padding: 4px 12px; background: transparent; color: var(--foreground); border: 1px solid var(--input); border-radius: 4px; font: 14px var(--font-schibsted, system-ui, sans-serif); } .ds-input::placeholder { color: var(--muted-foreground); } .ds-input:focus-visible { outline: 0; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Citation Mark",
+      "kind": "custom",
+      "refersTo": "citation-mark",
+      "description": "Inline source reference in an answer; opens the source at that page.",
+      "html": "<button class=\"ds-cite\">p.14</button>",
+      "css": ".ds-cite { font: 500 11px var(--font-spline-mono, ui-monospace, monospace); letter-spacing: 0.02em; color: var(--brand); background: var(--brand-subtle); border: 1px solid color-mix(in oklch, var(--brand) 45%, transparent); border-radius: 2px; padding: 0 4px; cursor: pointer; transition: border-color 150ms cubic-bezier(0.25,1,0.5,1); } .ds-cite:hover { border-color: var(--brand); } .ds-cite:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }"
+    },
+    {
+      "name": "Figure Row",
+      "kind": "custom",
+      "refersTo": "figure",
+      "description": "Legend label over a mono figure; used for timings, tokens, credits.",
+      "html": "<div class=\"ds-figure\"><span class=\"ds-figure-label\">RETRIEVAL</span><span class=\"ds-figure-value\">412 ms</span></div>",
+      "css": ".ds-figure { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--border); } .ds-figure-label { font: 500 11px var(--font-spline-mono, ui-monospace, monospace); letter-spacing: 0.06em; color: var(--muted-foreground); } .ds-figure-value { font: 500 20px var(--font-spline-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums slashed-zero; color: var(--foreground); }"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Document type or status word. Square, never a pill.",
+      "html": "<span class=\"ds-tag\">PDF</span>",
+      "css": ".ds-tag { display: inline-block; font: 500 11px var(--font-spline-mono, ui-monospace, monospace); letter-spacing: 0.06em; color: var(--muted-foreground); background: var(--muted); border-radius: 3px; padding: 2px 6px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Reviewer's Desk",
+    "overview": "A reviewer at a desk, in daylight, with the document and a red pencil. Cool graphite paper and ink, structure drawn with hairline rules like an engineering datasheet, and a single vermilion mark only where the reviewer pointed: what you can act on, what you selected, where an answer came from. The product is the proof, so the site shows real machinery instead of describing it. Light first, dark fully supported.",
+    "keyCharacteristics": [
+      "Restrained color: tinted neutrals carry 90% or more of every screen; one accent, rarely.",
+      "Structure by hairline rule and whitespace, not by cards, shadows or color blocks.",
+      "Two voices of type: a grotesk for words, a mono for data.",
+      "Flat at rest; motion explains state changes and real sequence.",
+      "Real product shown close up; never an illustration standing in for it."
+    ],
+    "rules": [
+      { "name": "The One Mark Rule", "body": "Vermilion marks what you can act on, what you selected, or where an answer came from. Otherwise it is decoration and it is removed.", "section": "colors" },
+      { "name": "The No Raw Palette Rule", "body": "Components never use Tailwind palette classes or hex values; only semantic tokens.", "section": "colors" },
+      { "name": "The Mono Carries Data Rule", "body": "Spline Sans Mono appears only on figures and legend labels.", "section": "typography" },
+      { "name": "The One Family Rule", "body": "All words, including display, are Schibsted Grotesk. No serif, no italic display.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces at rest have no shadow; a shadow appears only on something that floats.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do show the real machinery.",
+      "Do spend the vermilion like a reviewer's red pencil.",
+      "Do set every number in Spline Sans Mono with tabular figures.",
+      "Do build structure with 1px hairlines and the 12-column grid."
+    ],
+    "donts": [
+      "Don't use generic AI tool marketing: glow blobs, gradient text, purple or neon accents.",
+      "Don't use SaaS landing-page clichés: centered hero stack, icon-card triplets, pill badges, dot grids.",
+      "Don't use emerald, a serif display face, or raw palette classes.",
+      "Don't animate layout properties or use bounce and elastic easing."
+    ]
+  }
+}
