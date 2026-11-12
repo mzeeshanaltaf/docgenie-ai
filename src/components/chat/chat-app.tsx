@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useDocGenieRuntime } from "@/lib/chat/runtime";
 import { Thread } from "./thread";
-import { ChatThreadList } from "./thread-list";
+import { ChatSidebar } from "./chat-sidebar";
 import { ViewerDock } from "./viewer-dock";
 import { ViewerProvider } from "./viewer-context";
 
@@ -18,7 +18,7 @@ function ChatLayout() {
     <div className="flex h-[calc(100dvh-3.5rem)] min-h-96 overflow-hidden bg-background">
       {/* Chats: a column from md up, a sheet below */}
       <aside className="hidden w-64 shrink-0 border-r border-rule bg-card md:block" aria-label="Chats">
-        <ChatThreadList />
+        <ChatSidebar />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -31,7 +31,7 @@ function ChatLayout() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-0">
               <SheetTitle className="sr-only">Chats</SheetTitle>
-              <ChatThreadList onNavigate={() => setListOpen(false)} />
+              <ChatSidebar onNavigate={() => setListOpen(false)} />
             </SheetContent>
           </Sheet>
         </div>

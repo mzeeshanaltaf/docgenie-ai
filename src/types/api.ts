@@ -177,6 +177,19 @@ export type MessageOut = {
 
 export type MessageListOut = { messages: MessageOut[] };
 
+/** One liked answer (`GET /v1/messages/liked`), newest first. */
+export type LikedMessageOut = {
+  message_id: string;
+  session_id: string;
+  session_title: string | null;
+  question: string | null;
+  /** Plain-text preview of the answer, at most 400 characters. */
+  answer: string;
+  created_at: string;
+};
+
+export type LikedMessageListOut = { messages: LikedMessageOut[] };
+
 // ─── Chat stream (SSE) ──────────────────────────────────────────────────────
 
 export type Citation = {

@@ -112,6 +112,7 @@ All on the Hostinger VPS under Coolify, project **DocGenie** (`ljgyzo9d1hke7w07v
 | `DELETE /sessions/{id}` | `204`; messages and feedback cascade |
 | `PUT /messages/{id}/feedback` | body `{rating: like\|dislike, reason?, comment?}`; replaces earlier feedback; returns `{message_id, rating, reason, comment}`. Only assistant messages (`422` otherwise) |
 | `DELETE /messages/{id}/feedback` | `204`, idempotent |
+| `GET /messages/liked` | the caller's liked answers, newest first: `{messages: [{message_id, session_id, session_title, question, answer (plain-text preview, max 400 chars), created_at}]}` |
 | `GET /dashboard` | Phase 4. Read-only (no credit account = balances 0 / 0, nothing created). Shape below ("Dashboard response") |
 | `GET /account/export` | Phase 4. `200 application/zip`, `Content-Disposition: attachment; filename="docgenie-export-YYYY-MM-DD.zip"`, `Content-Length` set. Layout below. `503 STORAGE_UNAVAILABLE` if storage is unreachable (never a silently partial export) |
 | `DELETE /account` | Phase 4. `200 {deleted: {documents, sessions, storage_objects}}`. Idempotent. `503 STORAGE_UNAVAILABLE` if the object cleanup failed (rows are already gone; call again). Order below |
@@ -157,6 +158,7 @@ Another user's session, message or document is always `404 NOT_FOUND`, never `40
 | `PATCH` / `DELETE /api/sessions/{id}` | same | |
 | `GET /api/sessions/{id}/messages` | `GET /v1/sessions/{id}/messages` | |
 | `PUT` / `DELETE /api/messages/{id}/feedback` | same | |
+| `GET /api/messages/liked` | `GET /v1/messages/liked` | the chat sidebar's Liked tab |
 | `GET /api/credits/history[?limit&offset]` | `GET /v1/credits/history` | only `limit` and `offset` are forwarded |
 | `GET /api/account/export` | `GET /v1/account/export` | zip streamed with `Content-Disposition: attachment` |
 | `DELETE /api/account` body `{password?}` | `DELETE /v1/account` via Better Auth | see Account deletion below |
@@ -522,6 +524,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 | `DELETE /sessions/{id}` | none | `204` | `404` | same |
 | `PUT /messages/{id}/feedback` | `{rating, reason?, comment?}` | `200 {message_id, rating, reason, comment}` | `404`, `422` (not an assistant message) | same |
 | `DELETE /messages/{id}/feedback` | none | `204` (idempotent) | `404` | same |
+| `GET /messages/liked` | none | `200 {messages: LikedMessageOut[]}` | | same |
 | `GET /dashboard` | none | `200 DashboardOut` | | Dashboard response |
 | `GET /account/export` | none | `200` zip | `503 STORAGE_UNAVAILABLE` | Export zip layout |
 | `DELETE /account` | none | `200 {deleted}` | `503 STORAGE_UNAVAILABLE` (rows already gone; call again) | Account deletion order |

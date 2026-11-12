@@ -19,8 +19,8 @@ function metricItems(metrics: MessageMetrics): { label: string; value: string }[
  * stays out of the landing bundle's chat runtime.
  *
  * - `stacked` (default): the figure row of DESIGN.md, legend label over a mono figure.
- * - `inline`: one line of "label value" pairs set like the message timestamp
- *   (mono, body-sm, muted), for the chat footer next to the time and actions.
+ * - `inline`: one line of "label value" pairs set like the question timestamp
+ *   (caption, muted), for the chat footer next to the actions.
  */
 export function MetricsRow({
   metrics,
@@ -36,12 +36,12 @@ export function MetricsRow({
     return (
       <dl
         aria-label="Answer metrics"
-        className={cn("figure flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-muted-foreground", className)}
+        className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground", className)}
       >
         {items.map((it) => (
-          <div key={it.label} className="flex gap-1.5 whitespace-nowrap">
+          <div key={it.label} className="flex gap-1 whitespace-nowrap">
             <dt>{it.label}</dt>
-            <dd>{it.value}</dd>
+            <dd className="figure">{it.value}</dd>
           </div>
         ))}
       </dl>

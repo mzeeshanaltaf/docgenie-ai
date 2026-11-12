@@ -27,6 +27,19 @@ export function formatDateTime(iso: string): string {
   return `${DAY_MONTH.format(d)} ${TIME.format(d)}`;
 }
 
+const MESSAGE_STAMP = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** `Nov 5, 2026, 9:09 PM`: the stamp over a chat question and on liked answers. */
+export function formatMessageStamp(date: Date): string {
+  return MESSAGE_STAMP.format(date);
+}
+
 /** `412 B`, `38.2 KB`, `4.7 MB` */
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes)) return "n/a";

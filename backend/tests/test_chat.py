@@ -551,6 +551,39 @@ async def test_feedback_like_dislike_replace_and_clear(db_client, user_id, fake_
     assert on_user.status_code == 422
 
 
+async def test_liked_list_has_question_and_chat_and_only_the_callers_likes(
+    db_client, user_id, fake_openai
+):
+    fake_openai.responses.script(
+        simple_answer("**First** answer [1]."), simple_answer("Second."), simple_answer("Third.")
+    )
+    h = headers_for(user_id)
+    sid, _ = await post_chat(db_client, user_id, "first question")
+    await post_chat(db_client, user_id, "second question", session_id=sid)
+    other_sid, _ = await post_chat(db_client, user_id, "third question")
+    msgs = (await db_client.get(f"/v1/sessions/{sid}/messages", headers=h)).json()["messages"]
+    answers = [m for m in msgs if m["role"] == "assistant"]
+    other = next(
+        m
+        for m in (await db_client.get(f"/v1/sessions/{other_sid}/messages", headers=h)).json()["messages"]
+        if m["role"] == "assistant"
+    )
+
+    await db_client.put(f"/v1/messages/{answers[0]['id']}/feedback", json={"rating": "like"}, headers=h)
+    await db_client.put(f"/v1/messages/{answers[1]['id']}/feedback", json={"rating": "like"}, headers=h)
+    await db_client.put(f"/v1/messages/{other['id']}/feedback", json={"rating": "dislike"}, headers=h)
+
+    res = await db_client.get("/v1/messages/liked", headers=h)
+    assert res.status_code == 200
+    liked = res.json()["messages"]
+    assert [m["message_id"] for m in liked] == [answers[1]["id"], answers[0]["id"]]  # newest first
+    assert liked[0]["question"] == "second question" and liked[0]["session_id"] == sid
+    assert liked[1]["question"] == "first question" and liked[1]["answer"] == "First answer."
+
+    stranger = headers_for(f"{user_id}-other")
+    assert (await db_client.get("/v1/messages/liked", headers=stranger)).json()["messages"] == []
+
+
 async def test_cross_user_access_is_denied_on_sessions_messages_and_feedback(
     db_client, user_id, fake_openai
 ):

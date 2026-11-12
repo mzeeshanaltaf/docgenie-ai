@@ -9,7 +9,7 @@ Upload PDF, DOCX, TXT or CSV files and ask questions about them in plain languag
 ## Features
 
 - **Documents:** PDF, DOCX, TXT and CSV up to **20 MB and 50 pages** (CSV up to 10,000 rows). Scanned PDFs are read with OCR. Duplicate files are rejected. Originals are kept in private object storage and can be opened or downloaded.
-- **Chat:** streamed answers with reasoning summaries, tool traces, citations that open the page in a side viewer, per-chat document selection, stop, retry, rename and delete, copy / like / dislike (with a reason), and per-answer timing (first token, total, tokens per second).
+- **Chat:** streamed answers with a live "Thinking" block (timer, reasoning summaries and tool steps), citations that open the page in a side viewer, per-chat document selection, stop, retry, rename and delete, copy / like / dislike (with a reason), a Liked tab listing liked answers, and per-answer timing on hover (first token, total, tokens per second).
 - **CSV questions** are answered with read-only SQL that passes a strict validator (`backend/app/services/sql_guard.py`), not with free model-written queries.
 - **Credits:** 5 document credits and 25 message credits on signup, 1 per upload and 1 per chat turn. Failed uploads and answer-less turns are refunded. There is no way to buy more.
 - **Account:** self-service export (a zip of metadata, chats and the original files) and immediate deletion of every row and file.
@@ -163,7 +163,7 @@ PRODUCT.md  DESIGN.md     product and design brief
 
 ## Backend API
 
-All routes are under `/v1`, need `X-Internal-Key`, and (except health and signup credits) `X-User-Id`. There is no generated OpenAPI; the endpoint table is in [docs/plan/progress.md](docs/plan/progress.md). In short: `health`, `users/{id}/signup-credits`, `credits/history`, `documents` (upload, list, get, content, delete), `chat/stream`, `sessions` (list, messages, rename, delete), `messages/{id}/feedback`, `dashboard`, `account/export`, `account` (delete). Error bodies are `{success, status, message, details}`.
+All routes are under `/v1`, need `X-Internal-Key`, and (except health and signup credits) `X-User-Id`. There is no generated OpenAPI; the endpoint table is in [docs/plan/progress.md](docs/plan/progress.md). In short: `health`, `users/{id}/signup-credits`, `credits/history`, `documents` (upload, list, get, content, delete), `chat/stream`, `sessions` (list, messages, rename, delete), `messages/{id}/feedback`, `messages/liked`, `dashboard`, `account/export`, `account` (delete). Error bodies are `{success, status, message, details}`.
 
 ## Email verification and password reset
 

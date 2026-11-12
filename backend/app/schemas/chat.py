@@ -72,6 +72,21 @@ class FeedbackOut(BaseModel):
     comment: str | None = None
 
 
+class LikedMessageOut(BaseModel):
+    """One liked answer, with the question that prompted it, for the "Liked" list."""
+
+    message_id: uuid.UUID
+    session_id: uuid.UUID
+    session_title: str | None
+    question: str | None
+    answer: str  # the answer text, cut to LIKED_ANSWER_PREVIEW_CHARS
+    created_at: datetime
+
+
+class LikedMessageListOut(BaseModel):
+    messages: list[LikedMessageOut]
+
+
 class MessageOut(BaseModel):
     id: uuid.UUID
     role: Literal["user", "assistant"]

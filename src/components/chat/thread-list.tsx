@@ -127,7 +127,6 @@ export function ChatThreadList({ onNavigate }: { onNavigate?: () => void }) {
           </Button>
         </ThreadListPrimitive.New>
       </div>
-      <p className="ds-label px-3 pb-1.5">Chats</p>
       <div className="min-h-0 flex-1 overflow-y-auto border-t border-rule">
         <AuiIf condition={(s) => s.threads.isLoading}>
           <p className="px-3 py-4 text-body-sm text-muted-foreground">Loading chats…</p>

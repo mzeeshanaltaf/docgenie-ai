@@ -25,6 +25,9 @@ export function stageDislikeReason(messageId: string, reason: DislikeReason | nu
   else pendingReasons.delete(messageId);
 }
 
+/** Fired on `window` after feedback is saved, so the "Liked" list can reload. */
+export const FEEDBACK_CHANGED_EVENT = "docgenie:feedback-changed";
+
 export async function putFeedback(serverMessageId: string, body: FeedbackIn) {
   const res = await fetch(`/api/messages/${serverMessageId}/feedback`, {
     method: "PUT",
@@ -32,6 +35,7 @@ export async function putFeedback(serverMessageId: string, body: FeedbackIn) {
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Feedback failed (${res.status})`);
+  window.dispatchEvent(new Event(FEEDBACK_CHANGED_EVENT));
 }
 
 /** `submit` for like and dislike; saved to `PUT /api/messages/{id}/feedback`. */

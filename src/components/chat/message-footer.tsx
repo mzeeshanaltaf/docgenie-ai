@@ -12,32 +12,21 @@ import { cn } from "@/lib/utils";
 import { DislikePopover } from "./dislike-popover";
 import { MetricsRow } from "./metrics-row";
 
-export function formatStamp(date: Date): string {
-  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const day = date.toLocaleDateString([], { day: "numeric", month: "short" });
-  return `${day}, ${time}`;
-}
-
 const actionClass =
   "text-muted-foreground hover:text-foreground data-[active=true]:text-brand";
 
-/** Footer of a finished answer, one line: time, copy / like / dislike, then the metrics. */
+/**
+ * Footer of a finished answer, one line: copy / like / dislike, then the
+ * metrics, which only show while the answer is hovered or focused.
+ */
 export function MessageFooter() {
-  const createdAt = useAuiState((s) => s.message.createdAt);
   const custom = useAuiState((s) => s.message.metadata.custom);
   const feedback = useAuiState((s) => s.message.metadata.submittedFeedback?.type);
-  const { createdAt: serverTime, metrics } = readCustom(custom);
-  const when = serverTime ? new Date(serverTime) : createdAt;
+  const { metrics } = readCustom(custom);
 
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-      <div className="flex items-center gap-1">
-        <time
-          dateTime={when.toISOString()}
-          className="figure mr-2 text-body-sm text-muted-foreground"
-        >
-          {formatStamp(when)}
-        </time>
+      <div className="-ml-2 flex items-center gap-1">
         <ActionBarPrimitive.Copy asChild>
           <Button type="button" variant="ghost" size="icon-sm" className={actionClass} aria-label="Copy answer">
             <AuiIf condition={(s) => s.message.isCopied}>
@@ -75,7 +64,13 @@ export function MessageFooter() {
           </Button>
         </DislikePopover>
       </div>
-      {metrics && <MetricsRow metrics={metrics} variant="inline" />}
+      {metrics && (
+        <MetricsRow
+          metrics={metrics}
+          variant="inline"
+          className="opacity-0 transition-opacity duration-150 group-focus-within/answer:opacity-100 group-hover/answer:opacity-100"
+        />
+      )}
     </div>
   );
 }
