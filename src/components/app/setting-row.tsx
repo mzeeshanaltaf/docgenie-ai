@@ -18,7 +18,7 @@ export function SettingRow({
   return (
     <div className={cn("page-grid gap-y-4 border-t border-rule py-6", className)}>
       <div className="col-span-4 md:col-span-5 lg:col-span-4">
-        <h3 className="text-title">{title}</h3>
+        <h2 className="text-title">{title}</h2>
         {description ? (
           <p className="mt-1 text-body-sm text-muted-foreground">{description}</p>
         ) : null}

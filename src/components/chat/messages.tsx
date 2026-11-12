@@ -79,7 +79,8 @@ function StatusNotice() {
 
 function WorkingIndicator() {
   return (
-    <p className="ds-label animate-pulse py-2" role="status">
+    <p className="ds-label flex items-center gap-2 py-2" role="status">
+      <span aria-hidden className="size-1.5 animate-pulse rounded-xs bg-muted-foreground" />
       Working
     </p>
   );

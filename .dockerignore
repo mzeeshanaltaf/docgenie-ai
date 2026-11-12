@@ -10,3 +10,8 @@ Dockerfile
 .vscode
 .idea
 *.log
+# Not part of the frontend image. n8n_workflows holds exports with live credentials in pinned data;
+# backend/ has its own Dockerfile and build context.
+n8n_workflows
+backend
+docs

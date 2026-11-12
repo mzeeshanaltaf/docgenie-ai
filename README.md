@@ -2,320 +2,192 @@
 
 **Live App:** [https://docgenie.zeeshanai.cloud](https://docgenie.zeeshanai.cloud)
 
-An AI-powered SaaS application that lets users upload documents and chat with them using natural language. Upload PDFs, DOCX, TXT, or CSV files and get instant AI-powered answers — no more searching through pages of content.
+Upload PDF, DOCX, TXT or CSV files and ask questions about them in plain language. Answers stream in with the model's reasoning summary and the tools it used, and every claim carries a citation that opens the source page with the passage marked.
+
+> **Deployment status:** the code in this repository is the rebuilt system (FastAPI backend, MinIO storage, new UI). The production site above has not been migrated yet (Phase 11 of the rebuild, see [docs/plan/](docs/plan/README.md)); it still runs the earlier n8n-backed build.
 
 ## Features
 
-### 📄 Document Processing
-- Upload PDF, DOCX, TXT, and CSV files (up to 5MB each)
-- Drag-and-drop file upload with instant processing
-- Document library with file management and deletion
-- 5 document credits on signup (free tier)
-
-### 💬 AI-Powered Chat
-- Natural language Q&A against your documents
-- Multiple chat sessions with auto-generated titles
-- Full chat history preserved across sessions
-- 25 message credits on signup (free tier)
-
-### 📊 Smart Dashboard
-- Overview with document count, credit balance, and message balance
-- Recent chat sessions with one-click navigation
-- Real-time credit tracking after every action
-- Transaction history for all credit usage
-
-### ⚡ Credit System
-- **Document credits** — consumed on each document upload
-- **Message credits** — consumed on each chat message
-- Free tier: 5 document credits + 25 message credits on signup
-- Transaction history in Settings
-
-## Tech Stack
-
-- **Frontend:** Next.js 16 (App Router), TypeScript, React 19, Tailwind CSS v4
-- **UI Components:** shadcn/ui (Slate theme + Emerald accent)
-- **Auth:** Better Auth (email/password with OTP email verification + Google OAuth, Postgres-backed)
-- **Email:** Resend (auth OTP emails only)
-- **Backend:** n8n webhooks (AI processing, data storage, credit management)
-- **State Management:** React Context API (`DashboardDataProvider`)
-- **Dark Mode:** next-themes (system-aware + manual toggle)
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── (marketing)/          # Public marketing pages
-│   │   ├── page.tsx          # Landing page
-│   │   ├── about/            # About page
-│   │   ├── privacy/          # Privacy policy
-│   │   └── terms/            # Terms of service
-│   ├── (dashboard)/          # Protected dashboard pages
-│   │   ├── dashboard/
-│   │   │   ├── page.tsx      # Overview
-│   │   │   ├── documents/    # Document management
-│   │   │   ├── chat/         # AI chat interface
-│   │   │   └── settings/     # User settings & credits
-│   │   └── layout.tsx        # Dashboard shell with DashboardDataProvider
-│   ├── api/
-│   │   ├── documents/        # Upload, list, delete
-│   │   ├── chat/             # Message, title, history
-│   │   ├── analytics/        # User statistics
-│   │   ├── credits/          # Balance & history
-│   │   ├── contact/          # Contact form (honeypot + Upstash rate limit)
-│   │   └── auth/[...all]/    # Better Auth handler
-│   └── layout.tsx            # Root layout with theme provider + analytics
-├── components/
-│   ├── dashboard/
-│   │   ├── documents/        # Upload + list components
-│   │   ├── chat/             # Sidebar, messages, input
-│   │   ├── settings/         # Credits section
-│   │   ├── sidebar.tsx
-│   │   ├── top-nav.tsx
-│   │   └── credit-display.tsx
-│   ├── marketing/            # Landing page components
-│   ├── ui/                   # shadcn/ui primitives
-│   └── theme-provider.tsx    # next-themes wrapper
-├── contexts/
-│   └── dashboard-data.tsx    # DashboardDataProvider context
-├── lib/
-│   ├── n8n.ts                # n8n webhook client (JSON + multipart)
-│   ├── n8n-documents.ts      # uploadDocument, chatWithDocument, generateTitle
-│   ├── n8n-analytics.ts      # getUserAnalytics
-│   ├── n8n-credits.ts        # signupCredits, getRemainingCredits, getCreditHistory
-│   ├── n8n-data.ts           # getUserDocuments, getChatHistory
-│   └── n8n-delete.ts         # deleteDocuments
-├── types/
-│   └── n8n.ts                # TypeScript types for all n8n responses
-├── lib/auth.ts               # Better Auth server config (Postgres, Google, emailOTP, hooks)
-├── lib/auth-client.ts        # Better Auth React client
-├── lib/email.ts              # Resend sender + OTP email templates
-└── middleware.ts             # Session-cookie guard for /dashboard
-```
+- **Documents:** PDF, DOCX, TXT and CSV up to **20 MB and 50 pages** (CSV up to 10,000 rows). Scanned PDFs are read with OCR. Duplicate files are rejected. Originals are kept in private object storage and can be opened or downloaded.
+- **Chat:** streamed answers with reasoning summaries, tool traces, citations that open the page in a side viewer, per-chat document selection, stop, retry, rename and delete, copy / like / dislike (with a reason), and per-answer timing (first token, total, tokens per second).
+- **CSV questions** are answered with read-only SQL that passes a strict validator (`backend/app/services/sql_guard.py`), not with free model-written queries.
+- **Credits:** 5 document credits and 25 message credits on signup, 1 per upload and 1 per chat turn. Failed uploads and answer-less turns are refunded. There is no way to buy more.
+- **Account:** self-service export (a zip of metadata, chats and the original files) and immediate deletion of every row and file.
+- **Auth:** email and password with a 6-digit email code, plus Google sign-in (Better Auth).
 
 ## Architecture
 
-### Data Flow
-
 ```
-User Action → API Route → n8n Webhook → Claude AI
-    ↓
-n8n processes & stores data
-    ↓
-API returns result
-    ↓
-UI updates via DashboardDataProvider context
+Browser
+  └─ Next.js 16  (UI, Better Auth, routing)
+       └─ src/app/api/**   thin proxies: session -> X-Internal-Key + X-User-Id
+            └─ FastAPI backend (private, never public)        backend/
+                 ├─ Postgres  schema document_genie  (pgvector; app tables via Alembic)
+                 ├─ MinIO     originals, key users/{user_id}/{document_id}/{file_name}
+                 └─ OpenAI    Responses API: chat agent, titles, OCR, embeddings
 ```
 
-### DashboardDataProvider Context
+- **Next.js** only handles routing, auth and UI. It resolves the Better Auth session and forwards each request to the backend with a shared secret (`X-Internal-Key`) and the user id (`X-User-Id`). The browser never talks to the backend.
+- **FastAPI** owns credits, ingestion (parse, OCR, chunk, embed), hybrid retrieval (pgvector cosine + Postgres full text, fused with reciprocal rank fusion), the agent loop, the dashboard and account endpoints. Every query is scoped by the user id.
+- **Chat** streams as server-sent events from the backend, piped unchanged through `POST /api/chat` and consumed by an assistant-ui adapter. The wire format is documented in [backend/docs/chat-stream.md](backend/docs/chat-stream.md).
+- **Contact form** is the one workflow still on n8n; transactional auth email goes through Resend.
 
-- **Fetches once** on dashboard mount: analytics, documents, chat sessions, credit balance & history
-- **refreshDocuments()** — called after upload or delete
-- **refreshChatSessions()** — called after new messages
-- **refreshCredits()** — called after any credit-consuming action
-- **refreshAll()** — full refresh after major actions
+Design rules for the UI are in [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md).
 
-### Chat Session Design
+## Tech stack
 
-Session IDs are generated client-side via `crypto.randomUUID()`. n8n creates the session record on the first message — no separate "create session" API call required.
+| Area | Technology |
+|---|---|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui primitives, assistant-ui, react-pdf, motion |
+| Auth and email | Better Auth (email OTP + Google, Postgres), Resend |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2 (async, asyncpg), Alembic, uv |
+| Data | Postgres with pgvector, MinIO (S3 API) |
+| AI | OpenAI Python SDK, Responses API (`gpt-6-luna` for chat, titles and OCR; `text-embedding-3-small` for embeddings) |
 
-### Email Verification & Password Reset
-
-Email/password accounts must verify their address before they get a session. Better Auth's `emailOTP`
-plugin issues a 6-digit code (10 min, 3 attempts, hashed in the existing `verification` table) and
-`lib/email.ts` delivers it through Resend.
-
-- **Sign-up** → `/verify-email` → code → signed in automatically.
-- **Sign-in on an unverified account** → a fresh code is mailed and the user is redirected to the
-  same screen.
-- **Forgot password** → `/forgot-password` → code + new password → back to `/sign-in`.
-
-Google sign-ins arrive already verified and skip the flow entirely.
-
-## Getting Started
+## Local setup
 
 ### Prerequisites
 
-- Node.js 20+ (LTS recommended)
-- npm
-- A PostgreSQL database (Better Auth tables live in the `document_genie` schema)
-- Google OAuth credentials (for "Continue with Google")
-- A Resend account with a verified sending domain (auth OTP emails)
-- Upstash Redis (contact-form rate limiting)
-- n8n instance with the configured webhook workflows
+- Node.js 20+ and npm
+- Python 3.12 and [uv](https://docs.astral.sh/uv/)
+- Docker (for local MinIO)
+- A Postgres database with the `vector` extension available (Better Auth tables and the app tables share the `document_genie` schema)
+- An OpenAI API key, a Resend account with a verified domain, Google OAuth credentials, and (for the contact form only) Upstash Redis and an n8n webhook
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/mzeeshanaltaf/docgenie-ai.git
-   cd docgenie-ai
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Fill in your credentials:
-   ```env
-   # Better Auth (openssl rand -base64 32 for the secret)
-   BETTER_AUTH_SECRET=...
-   BETTER_AUTH_URL=http://localhost:3000
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   DATABASE_URL=postgres://user:pass@host:5432/db
-
-   # Email (Resend) — the from-domain must be verified in Resend.
-   # Leave the from-address unquoted; Coolify does not strip quotes.
-   RESEND_API_KEY=re_...
-   RESEND_FROM_EMAIL=DocGenie <noreply@verification.example.com>
-
-   # Contact form rate limiting (Upstash)
-   UPSTASH_REDIS_REST_URL=...
-   UPSTASH_REDIS_REST_TOKEN=...
-
-   # Analytics (Umami — build-time)
-   NEXT_PUBLIC_UMAMI_SCRIPT_URL=...
-   NEXT_PUBLIC_UMAMI_WEBSITE_ID=...
-
-   # n8n
-   N8N_WEBHOOK_BASE_URL=https://your-n8n-instance.com/webhook
-   N8N_API_KEY=your_n8n_api_key
-   N8N_INGESTION_WEBHOOK_ID=...
-   N8N_AI_ASSISTANT_WEBHOOK_ID=...
-   N8N_TITLE_GENERATOR_WEBHOOK_ID=...
-   N8N_ANALYTICS_WEBHOOK_ID=...
-   N8N_CREDITS_WEBHOOK_ID=...
-   N8N_DATA_WEBHOOK_ID=...
-   N8N_DELETE_WEBHOOK_ID=...
-   N8N_CONTACT_FORM_WEBHOOK_ID=...
-   ```
-
-4. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-   Access at `http://localhost:3000`
-
-### Build
+### 1. Install
 
 ```bash
-npm run build
-npm start
+git clone https://github.com/mzeeshanaltaf/docgenie-ai.git
+cd docgenie-ai
+npm install
+cd backend && uv sync && cd ..
 ```
 
-## API Endpoints
+### 2. Configure
 
-### Document Management
-- `POST /api/documents/upload` — Upload and process a document (multipart, max 5MB, PDF/DOCX/TXT/CSV)
-- `GET /api/documents/list` — List all user's documents
-- `DELETE /api/documents/delete` — Delete documents by file IDs
+```bash
+cp .env.example .env.local          # frontend
+cp backend/.env.example backend/.env  # backend
+```
 
-### Chat
-- `POST /api/chat/message` — Send a message, receive AI response
-- `POST /api/chat/title` — Generate a title for a chat session
-- `GET /api/chat/history` — Get all chat sessions with messages
+Fill in both files (variables below). `INTERNAL_API_KEY` must be **identical** in both; generate one with `python -c "import secrets;print(secrets.token_urlsafe(32))"`. Do not quote values in Coolify.
 
-### Analytics & Credits
-- `GET /api/analytics` — User statistics (documents processed, balances)
-- `GET /api/credits/balance` — Current credit + message balance
-- `GET /api/credits/history` — Transaction history
+### 3. Start storage
 
-### Other
-- `POST /api/contact` — Contact form submission
-- `GET|POST /api/auth/[...all]` — Better Auth endpoints (sign-in/up, session, OAuth). Signup credits are granted in a Better Auth `user.create.after` hook.
+From the repo root:
 
-## n8n Webhook Contract
+```bash
+docker compose --env-file backend/.env -f docker-compose.dev.yml up -d
+```
 
-All webhooks accept `POST` requests with:
-- Header: `x-api-key: {N8N_API_KEY}`
-- Body: JSON with optional `event_type` field for n8n switch nodes
+This starts MinIO (API on `localhost:9100`, console on `9101`) and creates the private buckets `docgenie` and `docgenie-test`. Credentials and bucket name come from the `S3_*` values in `backend/.env`.
 
-| Webhook | Env Var | Purpose |
-|---------|---------|---------|
-| **Ingestion** | `N8N_INGESTION_WEBHOOK_ID` | Process uploaded documents |
-| **AI Assistant** | `N8N_AI_ASSISTANT_WEBHOOK_ID` | Chat Q&A responses |
-| **Title Generator** | `N8N_TITLE_GENERATOR_WEBHOOK_ID` | Auto-generate session titles |
-| **Analytics** | `N8N_ANALYTICS_WEBHOOK_ID` | User usage statistics |
-| **Credits** | `N8N_CREDITS_WEBHOOK_ID` | Credit & message balance management |
-| **Data** | `N8N_DATA_WEBHOOK_ID` | Retrieve documents & chat history |
-| **Delete** | `N8N_DELETE_WEBHOOK_ID` | Delete documents |
-| **Contact** | `N8N_CONTACT_FORM_WEBHOOK_ID` | Contact form handler |
+### 4. Migrate and run the backend
 
-## Supported File Types
+From `backend/`:
 
-| Type | Extension | Notes |
-|------|-----------|-------|
-| PDF | `.pdf` | Most common; full text extraction |
-| Word | `.docx` | Microsoft Word documents |
-| Text | `.txt` | Plain text files |
-| CSV | `.csv` | Spreadsheet data |
+```bash
+uv run alembic upgrade head
+uv run uvicorn app.main:app --port 8765
+```
 
-Maximum file size: **5MB per document**
+Check it: `curl -H "X-Internal-Key: <your key>" http://localhost:8765/v1/health` should report the database and storage as `ok`. (Port 8765 avoids a clash with whatever already holds 8000; set `BACKEND_API_URL` to match.) The migrations create the `vector` extension if the database user may; otherwise enable it once as a superuser.
 
-## Styling & Theme
+### 5. Run the frontend
 
-- **Color scheme:** Emerald green accent on slate base
-- **Dark mode:** System-aware with manual toggle (next-themes)
-- **Typography:** Display font for headings, system font for body
-- **Components:** shadcn/ui with custom styling
-- **Animations:** CSS transitions + Tailwind v4
+```bash
+npm run dev      # http://localhost:3000
+```
+
+Sign up (the email code arrives through Resend), upload a document and chat.
+
+### Tests and checks
+
+```bash
+# backend, from backend/
+uv run pytest -q                      # full suite: real Postgres (throwaway schema), local MinIO; about 13 minutes against a remote DB
+uv run pytest tests/test_parsing_chunking.py tests/test_auth_and_errors.py tests/test_config.py -q   # unit tests only, seconds
+PYTHONPATH=. uv run python scripts/e2e_ingest.py http://localhost:8765   # live ingestion check (real OpenAI, a few cents)
+PYTHONPATH=. uv run python scripts/e2e_chat.py http://localhost:8765     # live chat check (real OpenAI, a few cents)
+
+# frontend, from the repo root
+npx tsc --noEmit
+npm run build
+```
+
+If the database or MinIO is unreachable the integration tests skip instead of failing.
+
+## Environment variables
+
+### Frontend (`.env.local`)
+
+| Variable | Purpose | Build-time |
+|---|---|---|
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Better Auth secret (32+ chars) and the app's base URL | |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in | |
+| `DATABASE_URL` | Postgres for Better Auth | yes |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | OTP email; the sender domain must be verified in Resend | |
+| `BACKEND_API_URL` | Base URL of the private backend, no trailing slash | |
+| `INTERNAL_API_KEY` | Shared secret sent as `X-Internal-Key` (same as the backend's) | |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Contact-form rate limit (fails open if unset) | |
+| `N8N_WEBHOOK_BASE_URL`, `N8N_API_KEY`, `N8N_CONTACT_FORM_WEBHOOK_ID` | Contact form only | |
+| `NEXT_PUBLIC_UMAMI_SCRIPT_URL`, `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Analytics | yes |
+
+### Backend (`backend/.env`)
+
+Required: `DATABASE_URL`, `OPENAI_API_KEY`, `INTERNAL_API_KEY`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`.
+
+Everything else is optional with a default in [backend/app/config.py](backend/app/config.py): models and reasoning effort (`CHAT_MODEL`, `CHAT_REASONING_EFFORT`, `CHAT_SERVICE_TIER`), limits (`MAX_UPLOAD_MB`, `MAX_PAGES`, `MAX_CSV_ROWS`), retrieval (`CHUNK_SIZE`, `RETRIEVAL_TOP_K`, `RRF_K`), agent (`AGENT_MAX_STEPS`, `QUERY_MAX_ROWS`, `QUERY_TIMEOUT_MS`), credits (`SIGNUP_DOC_CREDITS`, `SIGNUP_MESSAGE_CREDITS`) and prices (`LLM_INPUT_PRICE_PER_M`, `LLM_OUTPUT_PRICE_PER_M`; unset means `llm_usage.cost_usd` stays empty). [backend/.env.example](backend/.env.example) lists them all.
+
+## Project structure
+
+```
+src/
+  app/
+    (marketing)/          landing, about, contact, privacy, terms, auth pages
+    (dashboard)/dashboard/  overview, documents, chat, settings
+    api/                  proxies to the backend, Better Auth, contact
+  components/             app, auth, chat, contact, dashboard, marketing, seo, ui
+  contexts/dashboard-data.tsx
+  lib/                    backend client, SSE reader, chat runtime, auth, email, constants
+  proxy.ts                session guard for /dashboard
+backend/
+  app/                    main, config, deps, errors, db, models, schemas, routers, services, prompts
+  alembic/versions/       migrations
+  docs/chat-stream.md     SSE contract
+  tests/  scripts/
+docker-compose.dev.yml    local MinIO
+docs/plan/                rebuild plan and handoff log
+PRODUCT.md  DESIGN.md     product and design brief
+```
+
+## Backend API
+
+All routes are under `/v1`, need `X-Internal-Key`, and (except health and signup credits) `X-User-Id`. There is no generated OpenAPI; the endpoint table is in [docs/plan/progress.md](docs/plan/progress.md). In short: `health`, `users/{id}/signup-credits`, `credits/history`, `documents` (upload, list, get, content, delete), `chat/stream`, `sessions` (list, messages, rename, delete), `messages/{id}/feedback`, `dashboard`, `account/export`, `account` (delete). Error bodies are `{success, status, message, details}`.
+
+## Email verification and password reset
+
+Email and password accounts must verify their address before they get a session. Better Auth's `emailOTP` plugin issues a 6-digit code (10 minutes, 3 attempts, hashed in the existing `verification` table) and `src/lib/email.ts` delivers it through Resend.
+
+- **Sign-up** -> `/verify-email` -> code -> signed in automatically.
+- **Sign-in on an unverified account** -> a fresh code is mailed and the user is sent to the same screen.
+- **Forgot password** -> `/forgot-password` -> code and new password -> back to `/sign-in`.
+
+Google sign-ins arrive verified and skip the flow.
 
 ## Troubleshooting
 
-### Document upload fails
-- Check file type is PDF, DOCX, TXT, or CSV
-- Verify file is under 5MB
-- Check `N8N_INGESTION_WEBHOOK_ID` is correct in `.env.local`
-- Inspect Network tab for API error details
-
-### Chat not responding
-- Verify `N8N_AI_ASSISTANT_WEBHOOK_ID` is correct
-- Check n8n instance is running and workflow is active
-- Ensure message credits > 0
-
-### Credits not updating
-- Check `N8N_CREDITS_WEBHOOK_ID` is correct
-- Review n8n workflow logs for errors
-- Hard refresh browser (Ctrl+Shift+R)
-
-### Dark mode not persisting
-- Verify `suppressHydrationWarning` is on `<html>` in root layout
-- Check `next-themes` provider wraps the app in layout.tsx
+- **Every API call returns 502 `BACKEND_AUTH_FAILED`:** `INTERNAL_API_KEY` differs between `.env.local` and `backend/.env`.
+- **502 `BACKEND_UNAVAILABLE`:** the backend is not running, or `BACKEND_API_URL` points at the wrong port.
+- **Upload says storage is unavailable (503):** MinIO is not running, or the `S3_*` values do not match it. `GET /v1/health` shows which check failed.
+- **A document stays `processing`:** the OpenAI key or network failed during embedding; after 10 minutes the sweep marks it failed and refunds the credit.
+- **Chat says the model is busy:** only happens with `CHAT_SERVICE_TIER=flex`, which is opt-in because it often returns 429.
+- **Backend tests skip:** the database or MinIO is unreachable.
+- **No verification email:** check `RESEND_API_KEY`, that the `RESEND_FROM_EMAIL` domain is verified in Resend, and the server console (send failures never reach the UI).
 
 ## Deployment
 
-### Coolify on a VPS (current production)
-
-Production runs on a self-hosted [Coolify](https://coolify.io) instance
-(Hostinger VPS), deployed from a `Dockerfile` (Next.js `output: "standalone"`).
-
-```bash
-git push origin main
-# GitHub Actions (.github/workflows/deploy.yml) triggers a Coolify deploy
-```
-
-- Set all environment variables in the Coolify app (Configuration → Environment
-  Variables). Mark every `NEXT_PUBLIC_*` and `DATABASE_URL` as **build-time**.
-- Auto-deploy needs two repo secrets: `COOLIFY_API_TOKEN` (deploy-scoped) and
-  `COOLIFY_APP_UUID`.
-- The container health check requires `curl` in the image (already in the
-  `Dockerfile`); set the health-check port to `3000`.
-- Google OAuth redirect URI: `https://<your-domain>/api/auth/callback/google`.
-
-### Self-hosted
-
-```bash
-npm run build
-npm start
-```
+Production is a self-hosted [Coolify](https://coolify.io) instance on a Hostinger VPS. The frontend image is the root `Dockerfile` (Next.js `output: "standalone"`, port 3000, `curl` for the health check); pushing to `main` triggers `.github/workflows/deploy.yml`. Mark every `NEXT_PUBLIC_*` and `DATABASE_URL` as build-time, and never quote values. The backend (`backend/Dockerfile`, port 8000) and a private MinIO service are added to Coolify in Phase 11; the checklist and the env var list are in [docs/plan/progress.md](docs/plan/progress.md).
 
 ## License
 

@@ -79,7 +79,7 @@ export function LegalPage({
               {closing.body}{" "}
               <Link
                 href="/contact"
-                className="rounded-sm text-brand underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="rounded-sm text-brand underline underline-offset-4 hover:decoration-2 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
               >
                 Contact
               </Link>

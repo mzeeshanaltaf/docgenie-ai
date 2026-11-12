@@ -46,9 +46,11 @@ export function ReasoningView({ text, running }: { text: string; running: boolea
           aria-hidden
         />
         <span className="ds-label shrink-0">Reasoning</span>
-        <span className={cn("truncate", running && "animate-pulse")}>
-          {running ? (heading ?? "Thinking") : (heading ?? "")}
-        </span>
+        {/* The mark pulses, not the text: a fading label would dip below the text contrast. */}
+        {running ? (
+          <span aria-hidden className="size-1.5 shrink-0 animate-pulse rounded-xs bg-muted-foreground" />
+        ) : null}
+        <span className="truncate">{running ? (heading ?? "Thinking") : (heading ?? "")}</span>
       </button>
       <div
         className={cn(

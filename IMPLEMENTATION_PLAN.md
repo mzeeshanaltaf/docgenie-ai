@@ -1,3 +1,5 @@
+> **Historical document.** This describes the earlier n8n-backed build (and mentions Clerk, which was replaced by Better Auth). It is kept for reference only. The current architecture is in [README.md](README.md) and [CLAUDE.md](CLAUDE.md); the rebuild plan and history are in [docs/plan/](docs/plan/README.md).
+
 # DocGenie — Implementation Plan
 
 ## Context

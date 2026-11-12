@@ -21,5 +21,11 @@ const ChatApp = dynamic(() => import("@/components/chat/chat-app"), {
 });
 
 export default function ChatPage() {
-  return <ChatApp />;
+  return (
+    <>
+      {/* The page has no visible title (the breadcrumb names it); screen readers still need one. */}
+      <h1 className="sr-only">Chat</h1>
+      <ChatApp />
+    </>
+  );
 }

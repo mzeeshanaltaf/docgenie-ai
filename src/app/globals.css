@@ -110,9 +110,12 @@
   --radius-4xl: 16px;
 
   /* Elevation: flat at rest. Only overlays that float over content get a shadow. */
-  --shadow-2xs: none;
-  --shadow-xs: none;
-  --shadow-sm: none;
+  /* A zero, transparent shadow rather than `none`: Tailwind composes box-shadow as
+     "ring, shadow" in one declaration, and a literal `none` inside that list voids it,
+     which silently removed the focus ring from every control that carries shadow-xs. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
   --shadow-md: 0 8px 24px -8px oklch(0.2 0.02 255 / 0.18), 0 0 0 1px oklch(0.2 0.02 255 / 0.06);
   --shadow-lg: 0 16px 40px -12px oklch(0.2 0.02 255 / 0.22), 0 0 0 1px oklch(0.2 0.02 255 / 0.06);
 
@@ -331,5 +334,7 @@
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--brand) 55%, transparent);
 }
 mark.cite-highlight {
-  color: inherit;
+  /* Ink on the tinted fill, whatever the surrounding text color is: inheriting a muted
+     parent colour measured 3.9:1 here. */
+  color: var(--foreground);
 }
