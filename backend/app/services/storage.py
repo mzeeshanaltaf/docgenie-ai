@@ -33,6 +33,13 @@ class StorageError(Exception):
     """Any failure talking to object storage (unreachable, bad credentials, missing bucket)."""
 
 
+class ObjectNotFound(StorageError):
+    """The key does not exist (as opposed to storage being unreachable)."""
+
+
+_NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound")
+
+
 @dataclass
 class StoredObject:
     body: Any  # botocore StreamingBody
@@ -94,7 +101,11 @@ def user_prefix(user_id: str) -> str:
 async def _run(fn: Any, *args: Any, **kwargs: Any) -> Any:
     try:
         return await asyncio.to_thread(fn, *args, **kwargs)
-    except (ClientError, BotoCoreError) as exc:
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") in _NOT_FOUND_CODES:
+            raise ObjectNotFound(str(exc)) from exc
+        raise StorageError(str(exc)) from exc
+    except BotoCoreError as exc:
         raise StorageError(str(exc)) from exc
 
 

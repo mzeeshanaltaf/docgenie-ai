@@ -48,9 +48,9 @@ Implement Phase N of the DocGenie rebuild. Start by reading docs/plan/README.md 
 |---|---|---|---|---|
 | 1 | [Backend foundation](phase-1-backend-foundation.md) | done | 2026-11-11 | d27fb66 |
 | 2 | [Documents and ingestion](phase-2-documents-and-ingestion.md) | done | 2026-11-11 | 7f06637 |
-| 3 | [Chat backend](phase-3-chat-backend.md) | done | 2026-11-12 | |
-| 4 | [Dashboard, account, contact](phase-4-dashboard-account-contact.md) | not started | | |
-| 5 | [Frontend data layer](phase-5-frontend-data-layer.md) | not started | | |
+| 3 | [Chat backend](phase-3-chat-backend.md) | done | 2026-11-12 | 3ee09c8 |
+| 4 | [Dashboard, account, contact](phase-4-dashboard-account-contact.md) | done (contact stays on n8n) | 2026-11-12 | |
+| 5 | [Frontend data layer](phase-5-frontend-data-layer.md) | done | 2026-11-12 | |
 | 6 | [Design system](phase-6-design-system.md) | not started | | |
 | 7 | [Chat UI and document viewer](phase-7-chat-ui-and-document-viewer.md) | not started | | |
 | 8 | [App surfaces redesign](phase-8-app-surfaces-redesign.md) | not started | | |
@@ -109,7 +109,7 @@ Browser
 |---|---|
 | `gpt-6-luna` is used exactly as given and supports `service_tier: "flex"`, `reasoning.effort: "medium"`, reasoning summaries and image input. If any is unsupported, stop and report; don't substitute silently | Phase 1 (smoke test) |
 | Credits stay at 5 documents + 25 messages on signup, 1 per upload, 1 per chat turn | Phase 2 |
-| The contact workflow is replaced by storing the submission in the DB and emailing `CONTACT_NOTIFY_EMAIL` via Resend | Phase 4 |
+| ~~The contact workflow is replaced by storing the submission in the DB and emailing `CONTACT_NOTIFY_EMAIL` via Resend~~ **Rejected by the user in Phase 4 (2026-11-12): the contact form stays on n8n** | Phase 4 |
 | "copied/linked/disliked" means copy, like, dislike | Phase 3 / 7 |
 
 When an assumption is confirmed or changed, record that in `progress.md` under **Decisions made during implementation**.

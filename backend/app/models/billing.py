@@ -78,16 +78,3 @@ class LlmUsage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-
-
-class ContactSubmission(Base):
-    __tablename__ = "contact_submissions"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    email: Mapped[str] = mapped_column(Text, nullable=False)
-    message: Mapped[str] = mapped_column(Text, nullable=False)
-    ip: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )

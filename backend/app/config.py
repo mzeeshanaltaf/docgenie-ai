@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     query_timeout_ms: int = 5000  # query_table statement_timeout
     tool_result_max_chars: int = 24_000  # hard cap on any tool output sent back to the model
 
+    # --- Dashboard ---
+    dashboard_recent_limit: int = 5  # recent sessions and recent documents
+    dashboard_activity_limit: int = 10  # recent credit ledger entries
+    dashboard_usage_days: int = 14  # length of the per-day usage series (UTC days, today included)
+
     # --- Credits ---
     signup_doc_credits: int = 5
     signup_message_credits: int = 25
@@ -101,8 +106,6 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     s3_region: str = "us-east-1"
     internal_api_key: str = ""
-    resend_api_key: str = ""
-    contact_notify_email: str = ""
 
     db_schema: str = "document_genie"
 
