@@ -577,7 +577,7 @@ Template: copy for each phase and fill in every field. Write "none" rather than 
 ### Phase 8: Dashboard, settings and auth pages redesign (2026-11-12)
 
 - **Status:** done, with the two flow gaps listed under Exit criteria (the emailed OTP and reset codes were not entered)
-- **Commit:** not committed
+- **Commit:** f64fa10
 - **What was built:**
   - Shell: `app/(dashboard)/layout.tsx`, `components/dashboard/{sidebar,top-nav,credit-display}.tsx`, `components/user-menu.tsx`, new `components/wordmark.tsx`. Credits once (sidebar), real breadcrumb, Help & Support to `/contact`.
   - Shared primitives: `components/app/{page-shell,tag,setting-row}.tsx`; helpers `lib/{format,credits,document-errors}.ts`; constants `SIGNUP_*_CREDITS`.
