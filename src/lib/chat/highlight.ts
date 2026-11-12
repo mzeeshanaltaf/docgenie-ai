@@ -1,11 +1,13 @@
 /**
  * Locating a cited passage in a document's text.
  *
- * A citation carries the first ~240 characters of a chunk, whitespace-collapsed
- * by the backend. The viewer's text comes from a different extractor (pdf.js, or
- * the raw file), so spacing, hyphenation and line breaks differ. Matching is
- * therefore done on letters and digits only, case-folded; `map[i]` says which
- * original character each normalised character came from.
+ * A citation carries the passage the answer relied on (one to a few sentences,
+ * whitespace-collapsed by the backend; see backend/app/services/citations.py).
+ * The viewer's text comes from a different extractor (pdf.js, or the raw file),
+ * so spacing, hyphenation, ligatures and line breaks differ. Matching is
+ * therefore done on letters and digits only, NFKC-folded (so "ﬁ" is "fi") and
+ * lower-cased; `map[i]` says which original character each normalised character
+ * came from.
  */
 
 const KEEP = /[\p{L}\p{N}]/u;
@@ -15,12 +17,15 @@ export type Normalised = { text: string; map: number[] };
 export function normalise(source: string): Normalised {
   let text = "";
   const map: number[] = [];
-  for (let i = 0; i < source.length; i++) {
-    const ch = source[i];
-    if (KEEP.test(ch)) {
-      text += ch.toLowerCase();
-      map.push(i);
+  for (let i = 0; i < source.length; ) {
+    const ch = String.fromCodePoint(source.codePointAt(i)!);
+    for (const c of ch.normalize("NFKC")) {
+      if (!KEEP.test(c)) continue;
+      const low = c.toLowerCase();
+      text += low;
+      for (let k = 0; k < low.length; k++) map.push(i);
     }
+    i += ch.length;
   }
   return { text, map };
 }

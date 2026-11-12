@@ -122,8 +122,8 @@ data: {"index": 1, "document_id": "b81a691c-88a5-4892-ab28-0d23c6a712cc", "file_
 |---|---|
 | `index` | The number the answer text uses (`[1]`). |
 | `document_id`, `file_name` | The cited document. Open it in the viewer with `GET /v1/documents/{id}/content`. |
-| `page_start`, `page_end` | Page range of the cited **chunk** (about 1000 characters, so it can span pages). `null` for CSV tables. For DOCX and TXT the pages are approximate (see Phase 2). |
-| `snippet` | First ~240 characters of the passage, whitespace-collapsed. For a CSV answer it is the SQL that was run: `"SQL: SELECT region, SUM(revenue) … FROM rows …"`. For `get_document_text` it is the start of the document. |
+| `page_start`, `page_end` | Page range of the cited **chunk** (about 1000 characters, so it can span pages; the viewer looks for `snippet` across the range). For `get_document_text` it is narrowed to the `[Page N]` section holding `snippet` (that page and possibly the next). `null` for CSV tables. For DOCX and TXT the pages are approximate (see Phase 2). |
+| `snippet` | The passage the answer relied on, whitespace-collapsed (at most `CITATION_FOCUS_CHARS` = 360): the sentences or lines of the source that best match, word for word, the answer sentence(s) carrying this `[n]` (`services/citations.py`). The viewer highlights it. When the answer shares too little with the source it falls back to the source's first ~240 characters (`SNIPPET_CHARS`). For a CSV answer it is the SQL that was run: `"SQL: SELECT region, SUM(revenue) … FROM rows …"`. |
 
 ### `error`
 

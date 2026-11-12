@@ -240,8 +240,12 @@ export function DocumentViewer({
       <div className="flex min-h-0 flex-1 flex-col p-4">
         {kind === "pdf" && (
           <PdfViewer
+            // One viewer per document, so a citation into another file never
+            // searches the previous file's pages.
+            key={target.documentId}
             file={contentUrl(target.documentId)}
             initialPage={target.page ?? 1}
+            lastPage={target.pageEnd ?? undefined}
             highlight={target.snippet}
             focusKey={target.nonce}
             fill

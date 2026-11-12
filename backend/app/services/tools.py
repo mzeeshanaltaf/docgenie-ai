@@ -47,7 +47,11 @@ class Source:
     file_name: str
     page_start: int | None
     page_end: int | None
-    snippet: str
+    snippet: str  # fallback: the start of the source (or the SQL for a table answer)
+    # The text the model saw, so the citation can be narrowed to the passage the answer used
+    # (`services/citations.py`). Empty for table answers. `paged`: it has `[Page N]` markers.
+    text: str = ""
+    paged: bool = False
 
 
 @dataclass
@@ -68,13 +72,17 @@ class ToolContext:
         page_start: int | None,
         page_end: int | None,
         snippet: str,
+        text: str = "",
+        paged: bool = False,
     ) -> int:
         """Register citable evidence and return its 1-based number (stable for equal keys)."""
         existing = self._source_keys.get(key)
         if existing is not None:
             return existing
         index = len(self.sources) + 1
-        self.sources.append(Source(index, document_id, file_name, page_start, page_end, snippet))
+        self.sources.append(
+            Source(index, document_id, file_name, page_start, page_end, snippet, text, paged)
+        )
         self._source_keys[key] = index
         return index
 
@@ -290,6 +298,7 @@ async def _search_documents(ctx: ToolContext, args: dict[str, Any]) -> ToolResul
             page_start=hit.page_start,
             page_end=hit.page_end,
             snippet=hit.snippet,
+            text=hit.content,
         )
         blocks.append(
             f"[{index}] {hit.file_name}{_pages_label(hit.page_start, hit.page_end)}"
@@ -376,7 +385,9 @@ async def _get_document_text(ctx: ToolContext, args: dict[str, Any]) -> ToolResu
         file_name=doc.file_name,
         page_start=1 if doc.num_pages else None,
         page_end=doc.num_pages,
-        snippet=retrieval.make_snippet(shown),
+        snippet=retrieval.make_snippet(text),  # without the `[Page N]` marker the viewer can't find
+        text=shown,
+        paged=bool(doc.num_pages),
     )
     header = f"[{index}] Full text of {doc.file_name} (document_id: {doc.id})"
     if truncated:

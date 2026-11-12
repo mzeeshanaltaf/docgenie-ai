@@ -21,7 +21,7 @@ export function formatStamp(date: Date): string {
 const actionClass =
   "text-muted-foreground hover:text-foreground data-[active=true]:text-brand";
 
-/** Footer of a finished answer: time, copy / like / dislike and the metrics. */
+/** Footer of a finished answer, one line: time, copy / like / dislike, then the metrics. */
 export function MessageFooter() {
   const createdAt = useAuiState((s) => s.message.createdAt);
   const custom = useAuiState((s) => s.message.metadata.custom);
@@ -30,7 +30,7 @@ export function MessageFooter() {
   const when = serverTime ? new Date(serverTime) : createdAt;
 
   return (
-    <div className="mt-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
       <div className="flex items-center gap-1">
         <time
           dateTime={when.toISOString()}
@@ -75,7 +75,7 @@ export function MessageFooter() {
           </Button>
         </DislikePopover>
       </div>
-      {metrics && <MetricsRow metrics={metrics} />}
+      {metrics && <MetricsRow metrics={metrics} variant="inline" />}
     </div>
   );
 }

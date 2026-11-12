@@ -16,6 +16,11 @@ export type ViewerTarget = {
   fileName: string;
   /** 1-based page to open at (PDF, and approximate for DOCX/TXT); null for CSV. */
   page: number | null;
+  /**
+   * Last page of the cited range (a passage can sit on any page of a chunk that
+   * spans two). The PDF viewer looks for the passage across `page..pageEnd`.
+   */
+  pageEnd: number | null;
   /** Passage to highlight (a citation snippet); empty for none. */
   snippet: string;
   /** Changes on every open so reopening the same target re-runs the highlight. */
@@ -41,6 +46,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       documentId: c.document_id,
       fileName: c.file_name,
       page: c.page_start,
+      pageEnd: c.page_end,
       snippet: c.snippet,
       nonce: (prev?.nonce ?? 0) + 1,
     }));
@@ -52,6 +58,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
         documentId,
         fileName,
         page,
+        pageEnd: page,
         snippet: "",
         nonce: (prev?.nonce ?? 0) + 1,
       }));

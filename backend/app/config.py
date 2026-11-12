@@ -80,7 +80,8 @@ class Settings(BaseSettings):
     rrf_k: int = 60
     history_window: int = 20
     retrieval_candidates: int = 30  # per ranking (semantic / keyword) before fusion
-    snippet_chars: int = 240  # citation snippet length
+    snippet_chars: int = 240  # fallback citation snippet length (the start of the source)
+    citation_focus_chars: int = 360  # longest passage a citation is narrowed to and highlights
 
     # --- Agent tools ---
     doc_text_max_tokens: int = 25_000  # get_document_text truncation budget (about 4 chars/token)

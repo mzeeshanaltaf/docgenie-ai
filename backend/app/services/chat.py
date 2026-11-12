@@ -50,12 +50,12 @@ from app.services.agent import (
     ToolStart,
     run_agent,
 )
+from app.services.citations import CITATION_RE, cited_numbers, claim_text, focus_source
 from app.services.tools import ToolContext
 from app.services.usage import Usage, log_usage, usage_from_response
 
 log = logging.getLogger("docgenie.chat")
 
-CITATION_RE = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
 HISTORY_STATUSES = ("complete", "incomplete", "stopped")
 
 
@@ -80,7 +80,7 @@ def cited_indices(text: str) -> list[int]:
     """Source numbers the answer cites ([1], [2][3], [1, 2]), ascending and unique."""
     found: set[int] = set()
     for group in CITATION_RE.findall(text):
-        found.update(int(n) for n in re.split(r"\s*,\s*", group))
+        found.update(cited_numbers(group))
     return sorted(found)
 
 
@@ -241,19 +241,43 @@ class Run:
         }
 
     def citations(self) -> list[dict[str, Any]]:
-        wanted = set(cited_indices(self.acc.content))
-        return [
-            {
-                "index": src.index,
-                "document_id": str(src.document_id),
-                "file_name": src.file_name,
-                "page_start": src.page_start,
-                "page_end": src.page_end,
-                "snippet": src.snippet,
-            }
-            for src in self.ctx.sources
-            if src.index in wanted
-        ]
+        """The cited sources, each narrowed to the passage its `[n]` sentences rely on."""
+        answer = self.acc.content
+        wanted = set(cited_indices(answer))
+        out: list[dict[str, Any]] = []
+        for src in self.ctx.sources:
+            if src.index not in wanted:
+                continue
+            snippet, page_start, page_end = src.snippet, src.page_start, src.page_end
+            focus = None
+            if src.text:
+                try:
+                    focus = focus_source(
+                        src.text,
+                        claim_text(answer, src.index),
+                        paged=src.paged,
+                        max_chars=get_settings().citation_focus_chars,
+                    )
+                except Exception:  # never lose a citation over the highlight
+                    log.exception("could not focus citation %s", src.index)
+            if focus is not None:
+                snippet = focus.snippet
+                if focus.page_start is not None:
+                    page_start = focus.page_start
+                    last = page_end if page_end is not None else focus.page_start
+                    page_end = min(focus.page_end or focus.page_start + 1, last)
+                    page_end = max(page_end, page_start)
+            out.append(
+                {
+                    "index": src.index,
+                    "document_id": str(src.document_id),
+                    "file_name": src.file_name,
+                    "page_start": page_start,
+                    "page_end": page_end,
+                    "snippet": snippet,
+                }
+            )
+        return out
 
 
 async def _persist(
